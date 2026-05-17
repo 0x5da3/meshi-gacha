@@ -981,6 +981,10 @@
               <span class="snd-lab">サウンド</span>
             </button>
             <input class="sndvol" id="sndVol" type="range" min="0" max="100" step="1" value="80" aria-label="音量">
+            <button class="sndmute" id="bgmMute" role="switch" aria-checked="false" aria-label="BGMをミュート">
+              <span class="snd-ic" id="bgmIc">🎵</span>
+              <span class="snd-lab">BGM</span>
+            </button>
           </div>
           <button class="alctog" id="alctog" role="switch" aria-checked="true" aria-label="アルコールあり/なし切替">
             <span class="al-lab"><span>🍷</span><span>アルコール</span></span>
@@ -1381,7 +1385,7 @@ let energy=0;            // 0〜10。10でフル→次回10連
 let alcoholOn=true;      // アルコール込み/抜き切り替え
 let confirmThreshold=4; // このレア度(lvl)以上で開封必須（未開封ロック）。nullでオフ。初期値はSR
 // サウンド設定（localStorage に保存）
-let soundMuted=false, soundVolume=0.8;
+let soundMuted=false, soundVolume=0.8, bgmMuted=false;
 // 演出モード：'gacha'（モニタなし）／'slot'（絵柄揃え）
 let appMode='gacha';
 // 予算モード：'normal'=¥500 刻み／'rich'=¥1000 刻み（どちらも ¥1000〜¥5000）
@@ -1389,6 +1393,7 @@ let budgetMode='normal';
 try{
   const sv=localStorage.getItem('mg.snd.vol'); if(sv!=null){ const n=parseFloat(sv); if(isFinite(n)) soundVolume=Math.min(1,Math.max(0,n)); }
   const sm=localStorage.getItem('mg.snd.mute'); if(sm!=null) soundMuted=(sm==='1');
+  const bm=localStorage.getItem('mg.bgm.mute'); if(bm!=null) bgmMuted=(bm==='1');
   const am=localStorage.getItem('mg.mode'); if(am==='slot'||am==='gacha') appMode=am;
 }catch(e){}
 const BUDGET_MIN=1000, BUDGET_MAX=5000;
@@ -2114,6 +2119,19 @@ function unlockAudio(){
 ['pointerdown','touchend','click','keydown'].forEach(ev=>
   window.addEventListener(ev,unlockAudio,{passive:true}));
 
+// ページ非表示/離脱で音を止める（バックグラウンドや閉じた後も鳴り続けるのを防ぐ）
+function pauseAllAudio(){
+  try{ if(typeof bgmAudio!=='undefined'&&bgmAudio) bgmAudio.pause(); }catch(e){}
+  try{ if(SFX_EL) SFX_EL.pause(); }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){ pauseAllAudio(); return; }
+  try{ if(sfxStarted) startSilentLoop(); }catch(e){}        // 収録セッション復帰
+  try{ if(typeof bgmWanted!=='undefined'&&bgmWanted&&appMode==='slot'&&typeof bgmStart==='function') bgmStart(); }catch(e){}
+});
+window.addEventListener('pagehide',pauseAllAudio);
+window.addEventListener('beforeunload',pauseAllAudio);
+
 /* ===== 店舗別 BGM（スロットモード専用・Web Audio 合成）=====
    音は必ず masterOut(ctx) 経由＝ミュート/音量に追従し iOS 画面収録にも乗る。
    semitone は C4(261.63Hz) からの半音オフセット。null=休符。負値=低オクターブ。 */
@@ -2324,7 +2342,7 @@ function bgmRender(store,rush){
   });
 }
 function bgmApplyVol(){
-  try{ bgmAudio.volume=Math.max(0,Math.min(1, sfxVol()*bgmFade)); }catch(e){}
+  try{ bgmAudio.volume = bgmMuted ? 0 : Math.max(0,Math.min(1, sfxVol()*bgmFade)); }catch(e){}
 }
 function bgmFadeTo(target,ms,cb){
   if(bgmFadeTimer){ clearInterval(bgmFadeTimer); bgmFadeTimer=null; }
@@ -3006,6 +3024,8 @@ alctog.addEventListener('click',()=>{
 const sndMute=document.getElementById('sndMute');
 const sndVol=document.getElementById('sndVol');
 const sndIc=document.getElementById('sndIc');
+const bgmMute=document.getElementById('bgmMute');
+const bgmIc=document.getElementById('bgmIc');
 function sndIcon(){
   if(soundMuted||soundVolume<=0) return '🔇';
   if(soundVolume<0.34) return '🔈';
@@ -3017,11 +3037,20 @@ function renderSnd(){
   sndVol.value=Math.round(soundVolume*100);
   sndVol.disabled=soundMuted;
   sndIc.textContent=sndIcon();
+  if(bgmMute){
+    bgmMute.setAttribute('aria-checked',bgmMuted?'true':'false');
+    if(bgmIc) bgmIc.textContent=bgmMuted?'🔇':'🎵';
+  }
 }
 sndMute.addEventListener('click',()=>{
   soundMuted=!soundMuted;
   try{ localStorage.setItem('mg.snd.mute',soundMuted?'1':'0'); }catch(e){}
   applyMasterVolume(); renderSnd();
+});
+if(bgmMute) bgmMute.addEventListener('click',()=>{
+  bgmMuted=!bgmMuted;
+  try{ localStorage.setItem('mg.bgm.mute',bgmMuted?'1':'0'); }catch(e){}
+  bgmApplyVol(); renderSnd();
 });
 sndVol.addEventListener('input',()=>{
   soundVolume=Math.min(1,Math.max(0,(+sndVol.value||0)/100));
