@@ -102,6 +102,63 @@
     overflow:hidden;
     box-shadow:inset 0 -12px 20px rgba(0,60,110,.28), inset 0 8px 14px rgba(255,255,255,.7);
   }
+
+  /* ---- pachinko-style LCD monitor ---- */
+  .monitor{
+    position:relative;z-index:1;height:106px;margin-bottom:12px;
+    border:4px solid var(--rosso-dark);border-radius:14px;
+    background:#0a0f1e;overflow:hidden;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),
+      inset 0 9px 22px rgba(0,0,0,.72), 0 4px 0 var(--rosso-dark);
+  }
+  .monitor::after{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:4;
+    background:linear-gradient(158deg,rgba(255,255,255,.15) 0 20%,transparent 40%);
+  }
+  .mon-tag{
+    position:absolute;top:6px;left:9px;z-index:3;
+    font-family:"Reggae One",cursive;font-size:9px;letter-spacing:.16em;
+    color:#7fa6ff;opacity:.85;
+  }
+  .mon-scan{
+    position:absolute;inset:0;pointer-events:none;z-index:3;opacity:.45;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 2px,transparent 2px 4px);
+    mix-blend-mode:multiply;
+  }
+  .mon-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:5}
+  .mon-flash.on{animation:monFl .5s ease both}
+  @keyframes monFl{0%{opacity:0}12%{opacity:.92}100%{opacity:0}}
+  .mon-stage{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:5px;text-align:center;
+    color:#eaf2ff;font-weight:900;padding:6px 10px;
+    background:radial-gradient(circle at 50% 38%,#163066 0%,#0a0f1e 70%);
+    transition:background .35s;
+  }
+  .mon-emoji{font-size:42px;line-height:1;filter:drop-shadow(0 3px 4px rgba(0,0,0,.55))}
+  .mon-cap{font-size:12px;letter-spacing:.03em;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.75)}
+  .mon-stage.lv2{background:radial-gradient(circle at 50% 40%,#1f3f7a,#0a0f1e 72%)}
+  .mon-stage.lv2 .mon-cap{color:#8fc0ff}
+  .mon-stage.lv3{background:radial-gradient(circle at 50% 42%,#6a4410,#170d02 75%)}
+  .mon-stage.lv3 .mon-cap{color:#ffd05a}
+  .mon-stage.lv4{background:radial-gradient(circle at 50% 45%,#8a1238,#170006 75%)}
+  .mon-stage.lv4 .mon-cap{color:#ff8ebd}
+  .mon-stage.reach .mon-cap{
+    font-family:"Reggae One",cursive;font-size:17px;
+    animation:monThrob .5s ease-in-out infinite alternate;
+  }
+  @keyframes monThrob{from{transform:scale(1)}to{transform:scale(1.07)}}
+  .mon-anim .mon-emoji{animation:monPop .42s cubic-bezier(.2,1.7,.4,1) both}
+  .mon-anim .mon-cap{animation:monRise .42s ease both}
+  @keyframes monPop{0%{transform:scale(.3) rotate(-12deg);opacity:0}70%{transform:scale(1.13)}100%{transform:scale(1) rotate(0);opacity:1}}
+  @keyframes monRise{0%{transform:translateY(11px);opacity:0}100%{transform:none;opacity:1}}
+  .monitor.heat{animation:monHeat .28s linear infinite}
+  @keyframes monHeat{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+  .monitor.win{
+    box-shadow:inset 0 0 0 2px rgba(255,210,80,.5),
+      0 0 18px rgba(255,200,60,.7), 0 4px 0 var(--rosso-dark);
+  }
+
   .capsules{position:absolute;inset:0}
   .cap{
     position:absolute;width:24px;height:24px;border-radius:50%;
@@ -493,6 +550,8 @@
   @media (prefers-reduced-motion:reduce){
     .bigcap,.aura,.rays,.spark,.r4 .bigcap .ch,.kaboom,.chancebar{animation:none}
     .shock,.rbanner,.coin,.cutin,.heat,.chancefx{display:none}
+    .monitor.heat,.mon-anim .mon-emoji,.mon-anim .mon-cap,
+    .mon-stage.reach .mon-cap,.mon-flash.on{animation:none}
   }
 
   /* ---- alcohol on/off toggle ---- */
@@ -674,6 +733,12 @@
   </header>
 
   <div class="machine" id="machine">
+    <div class="monitor" id="monitor" aria-hidden="true">
+      <span class="mon-tag" id="monTag"></span>
+      <div class="mon-stage" id="monStage"></div>
+      <div class="mon-scan"></div>
+      <div class="mon-flash" id="monFlash"></div>
+    </div>
     <div class="dome"><div class="capsules" id="caps"></div></div>
     <div class="panel">
       <div class="energy" id="energyWrap">
@@ -742,6 +807,16 @@ const STORES = {
     tag: 'SAIZERIYA GACHA',
     theme: { rosso:'#0e8a43', rossoDark:'#084e27', verde:'#d11f3a', oro:'#e6a417' },
     spec: { type:'ノーマル機', decay:850, boost:1200, triggerLvl:3, stSpins:8, pHit:0.083 },
+    story: {
+      tag:'SAIZE STORY',
+      idle:['🍝','本日のまかない、なに出る？'],
+      intro:['👨‍🍳','コックさん、厨房に立つ'],
+      journey:[['🍅','畑直送トマト 入荷！'],['🧀','とろけるチーズ 用意OK']],
+      reach:['🐌','鉄板エスカルゴ 登場…リーチ！'],
+      super:['🔥','オーブン全開ッ スーパーリーチ！！'],
+      miss:['🍽️','やさしい一皿。ごちそうさま'],
+      win:['🍷','まかない大宴会 完成ッ 大当たり！！']
+    },
     menu: [
       // [name, price, category, icon, isMain, isDessert, isDrink/alcohol]
       ["辛味チキン",300,"前菜","🍗",false,false,false],
@@ -843,6 +918,16 @@ const STORES = {
     tag: 'OHSHO GACHA',
     theme: { rosso:'#c8102e', rossoDark:'#8e0a20', verde:'#0a7a3d', oro:'#e6a417' },
     spec: { type:'甘デジ', decay:1100, boost:1100, triggerLvl:2, stSpins:6, pHit:0.077 },
+    story: {
+      tag:'OHSHO STORY',
+      idle:['🥟','鉄鍋、あたたまってます'],
+      intro:['🧑‍🍳','見習い、鉄鍋を握る'],
+      journey:[['🔥','強火 入りましたッ'],['🥟','餃子、整列！']],
+      reach:['🍳','鍋ふり一閃…リーチ！'],
+      super:['🌪️','炎の鍋ふりッ スーパーリーチ！！'],
+      miss:['🍚','本日はあっさり定食でしめ'],
+      win:['🐉','満漢の宴 完成ッ 大当たり！！']
+    },
     menu: [
       // 餃子
       ["焼餃子",290,"餃子","🥟",false,false,false],
@@ -943,6 +1028,16 @@ const STORES = {
     tag: 'COCO ICHIBANYA GACHA',
     theme: { rosso:'#e9a100', rossoDark:'#a35f00', verde:'#c8102e', oro:'#b5630a' },
     spec: { type:'MAX機', decay:650, boost:1450, triggerLvl:3, stSpins:10, pHit:0.10 },
+    story: {
+      tag:'CURRY STORY',
+      idle:['🍛','スパイス、調合中…'],
+      intro:['🧑‍🍳','ルウの鍋に火をつける'],
+      journey:[['🍚','ライス 大盛り 完了'],['🥄','スパイス ひとさじ 投入！']],
+      reach:['🌶️','辛さレベル 上昇…リーチ！'],
+      super:['🔥','激辛ゲート 開放ッ スーパーリーチ！！'],
+      miss:['🍛','ふつうの一皿、でも うまい'],
+      win:['👑','全部のせ 完食王ッ 大当たり！！']
+    },
     menu: [
       // カレー（メイン）
       ["ポークカレー",604,"カレー","🍛",true,false,false],
@@ -1146,6 +1241,9 @@ function computeResult(){
 
 let pendingResult=null;
 let pendingTen=null;
+// モニタ演出のために結果を先読みしておく置き場（演出後に dispense が消費）
+let preSingle=null;
+let preTen=null;
 
 // エネルギーゲージ描画
 function renderEnergy(){
@@ -1223,7 +1321,7 @@ function chanceFx(kind,streak){
 
 // レバーを回した後：レア度に応じたカプセルが排出口に出てくる
 function dispenseCapsule(){
-  pendingResult=computeResult();
+  pendingResult=preSingle||computeResult(); preSingle=null;
   const rare=budgetRarity(pendingResult.budget);
   mustOpen = (confirmThreshold!=null && rare.lvl>=confirmThreshold);
   try{
@@ -1417,7 +1515,7 @@ function maxRareOf(list){
 
 // 10個のカプセルが排出される
 function dispenseTen(){
-  pendingTen=Array.from({length:10},()=>computeResult());
+  pendingTen=preTen||Array.from({length:10},()=>computeResult()); preTen=null;
   const mr=maxRareOf(pendingTen);
   mustOpen = (confirmThreshold!=null && mr.lvl>=confirmThreshold);
   try{
@@ -1939,17 +2037,97 @@ function flashLock(){
   sc.classList.remove('lockshake');void sc.offsetWidth;sc.classList.add('lockshake');
 }
 
+// ===== パチンコ風 液晶モニタ演出 =====
+const monitorEl=document.getElementById('monitor');
+const monStage=document.getElementById('monStage');
+const monTag=document.getElementById('monTag');
+const monFlash=document.getElementById('monFlash');
+const monReduced=()=>window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+const FALLBACK_STORY={tag:'GACHA',idle:['🎰','レバーを回そう！'],
+  intro:['🎬','物語、はじまる'],journey:[['✨','チャージ中…'],['💫','運勢 上昇中…']],
+  reach:['🔔','リーチ！'],super:['🔥','スーパーリーチ！！'],
+  miss:['🍀','本日は ふつう運'],win:['👑','大当たり！！']};
+const storyOf=()=>(STORES[currentStore]&&STORES[currentStore].story)||FALLBACK_STORY;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function monShowScene(emoji,text,cls,reach){
+  monStage.className='mon-stage mon-anim'+(cls?(' lv'+cls):'')+(reach?' reach':'');
+  monStage.innerHTML=`<div class="mon-emoji">${emoji}</div><div class="mon-cap">${text}</div>`;
+  void monStage.offsetWidth;
+}
+function monFlashOn(){
+  if(!monFlash) return;
+  monFlash.classList.remove('on');void monFlash.offsetWidth;monFlash.classList.add('on');
+}
+function monitorIdle(){
+  if(!monitorEl) return;
+  monitorEl.classList.remove('heat','win');
+  const st=storyOf();
+  if(monTag) monTag.textContent=st.tag||'';
+  monStage.className='mon-stage mon-anim';
+  monStage.innerHTML=`<div class="mon-emoji">${st.idle[0]}</div><div class="mon-cap">${st.idle[1]}</div>`;
+}
+
+// レア度(lvl)から演出シーンの並びを組み立てる（パチンコのリーチ昇格イメージ）
+function monBeats(st,lvl){
+  const b=[];
+  b.push({e:st.intro[0],t:st.intro[1],c:1,d:520});
+  b.push({e:st.journey[0][0],t:st.journey[0][1],c:1,d:520});
+  if(lvl>=1) b.push({e:st.journey[1][0],t:st.journey[1][1],c:1,d:520});
+  if(lvl>=2) b.push({e:st.reach[0],t:st.reach[1],c:2,d:900,r:true});
+  if(lvl>=3) b.push({e:st.super[0],t:st.super[1],c:3,d:980,r:true});
+  if(lvl>=4){
+    b.push({e:'⚡',t:'激アツ 確定…！',c:4,d:760,r:true,heat:true});
+    b.push({e:st.win[0],t:st.win[1],c:4,d:1080,r:true,win:true,fl:true});
+  }else if(lvl===3){
+    b.push({e:'🎊',t:'大当たり!?',c:3,d:760,fl:true});
+  }else{
+    b.push({e:st.miss[0],t:st.miss[1],c:Math.min(lvl,1),d:680});
+  }
+  return b;
+}
+
+async function runMonitor(lvl){
+  if(!monitorEl){ return; }
+  const st=storyOf();
+  if(monReduced()){
+    monShowScene(st.intro[0],'運勢を占い中…',Math.min(lvl,4),lvl>=2);
+    await sleep(520);
+    return;
+  }
+  for(const s of monBeats(st,lvl)){
+    if(s.heat) monitorEl.classList.add('heat');
+    if(s.win)  monitorEl.classList.add('win');
+    monShowScene(s.e,s.t,s.c,s.r);
+    if(s.fl) monFlashOn();
+    await sleep(s.d);
+    if(s.heat) monitorEl.classList.remove('heat');
+  }
+}
+
 function startGacha(){
   if(spinning) return;
   if(mustOpen){ flashLock(); return; }
   spinning=true;
   const tenMode = energy>=ENERGY_MAX;
+  // モニタ演出を結果のレア度で煽るため、先に抽選しておく
+  let lvl;
+  try{
+    if(tenMode){
+      preTen=Array.from({length:10},()=>computeResult());
+      lvl=maxRareOf(preTen).lvl;
+    }else{
+      preSingle=computeResult();
+      lvl=budgetRarity(preSingle.budget).lvl;
+    }
+  }catch(e){ console.error(e); lvl=0; }
   safeSound(tenMode);
   crank.classList.add('turning');
   crank.disabled=true;
   machine.classList.add('rolling');
-  setTimeout(()=>{
-    machine.classList.remove('rolling');
+  setTimeout(()=>machine.classList.remove('rolling'),520);
+  (async()=>{
+    try{ await runMonitor(lvl); }catch(e){ console.error(e); }
     crank.classList.remove('turning');
     try{
       if(tenMode){
@@ -1961,9 +2139,10 @@ function startGacha(){
         renderEnergy();
       }
     }catch(e){ console.error(e); }
+    monitorIdle();
     spinning=false;
     crank.disabled=false;
-  },525);
+  })();
 }
 
 crank.addEventListener('click',startGacha);   // ガチャポンのレバーが開始アクション
@@ -2003,6 +2182,7 @@ function applyStore(key){
     b.setAttribute('aria-selected',on?'true':'false');
   });
   renderRates(); renderSpec(); renderChance();
+  if(!spinning) monitorIdle();   // 演出中の店舗切替ではモニタを乱さない
 }
 storesw.addEventListener('click',e=>{
   const b=e.target.closest('.ssbtn');
