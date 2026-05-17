@@ -375,6 +375,7 @@
   .ecount{font-family:"Reggae One",cursive;font-size:12px;color:#ffe07a;flex:0 0 auto;line-height:1}
   .energy.full{border-color:var(--oro);animation:epulse 1s ease-in-out infinite}
   .energy.full .ecount{color:#fff}
+  .energy[hidden]{display:none}   /* RUSH中は隠してチャンス表示に切替 */
   @keyframes epulse{0%,100%{box-shadow:0 0 0 1px rgba(255,210,80,.5),0 0 8px rgba(255,210,80,.45)}50%{box-shadow:0 0 0 2px rgba(255,210,80,.9),0 0 16px rgba(255,210,80,.85)}}
 
   /* ---- 10-pull ---- */
@@ -911,7 +912,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <div class="ver">v0.10.2</div>
+      <div class="ver">v0.10.3</div>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -1516,7 +1517,9 @@ function renderEnergy(){
   for(let i=0;i<ENERGY_MAX;i++) cells+=`<span class="ecell${i<energy?' on':''}"></span>`;
   document.getElementById('ecells').innerHTML=cells;
   document.getElementById('ecount').textContent=full?'10連!':energy+'/'+ENERGY_MAX;
-  document.getElementById('energyWrap').classList.toggle('full',full);
+  const ew=document.getElementById('energyWrap');
+  ew.classList.toggle('full',full);
+  ew.hidden=chanceMode;   // RUSH中は10連エネルギー表示を隠す（RUSH表示に切替）
 }
 
 // チャンスモードのバッジ描画
@@ -1525,6 +1528,8 @@ function renderChance(){
   if(!w) return;
   const m=document.getElementById('machine');
   if(m) m.classList.toggle('chance',chanceMode);
+  const ew=document.getElementById('energyWrap');
+  if(ew) ew.hidden=chanceMode;   // RUSH中は10連エネルギー表示↔RUSH表示を切替
   if(chanceMode){
     w.hidden=false;
     w.innerHTML=`<span class="cm-ic">🔥</span><span class="cm-t">CHANCE MODE</span>`
