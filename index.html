@@ -78,6 +78,22 @@
   .ssbtn:not(.on):hover{background:rgba(200,16,46,.1)}
   .ssbtn:active{transform:scale(.96)}
 
+  /* ---- mode switcher (ガチャ / スロット) ---- */
+  .modesw{
+    display:inline-flex;gap:0;background:rgba(255,255,255,.6);
+    border:2px solid var(--rosso);border-radius:99px;padding:3px;margin:6px 0 0 6px;
+    box-shadow:2px 2px 0 rgba(0,0,0,.12);vertical-align:middle;
+  }
+  .msbtn{
+    border:0;background:none;cursor:pointer;
+    font-family:"Reggae One",cursive;font-size:12px;
+    padding:6px 11px;border-radius:99px;color:var(--rosso);
+    transition:background .15s,color .15s;letter-spacing:.02em;
+  }
+  .msbtn.on{background:var(--rosso);color:#fff}
+  .msbtn:not(.on):hover{background:rgba(200,16,46,.1)}
+  .msbtn:active{transform:scale(.96)}
+
   /* ---- machine ---- */
   .machine{
     background:var(--rosso);
@@ -102,6 +118,164 @@
     overflow:hidden;
     box-shadow:inset 0 -12px 20px rgba(0,60,110,.28), inset 0 8px 14px rgba(255,255,255,.7);
   }
+
+  /* ---- pachinko-style LCD monitor ---- */
+  .monitor{
+    position:relative;z-index:1;height:106px;margin-bottom:12px;
+    border:4px solid var(--rosso-dark);border-radius:14px;
+    background:#0a0f1e;overflow:hidden;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),
+      inset 0 9px 22px rgba(0,0,0,.72), 0 4px 0 var(--rosso-dark);
+  }
+  .monitor::after{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:4;
+    background:linear-gradient(158deg,rgba(255,255,255,.15) 0 20%,transparent 40%);
+  }
+  .mon-tag{
+    position:absolute;top:6px;left:9px;z-index:3;
+    font-family:"Reggae One",cursive;font-size:9px;letter-spacing:.16em;
+    color:#7fa6ff;opacity:.85;
+  }
+  .mon-scan{
+    position:absolute;inset:0;pointer-events:none;z-index:3;opacity:.45;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 2px,transparent 2px 4px);
+    mix-blend-mode:multiply;
+  }
+  .mon-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:5}
+  .mon-flash.on{animation:monFl .5s ease both}
+  @keyframes monFl{0%{opacity:0}12%{opacity:.92}100%{opacity:0}}
+  .mon-stage{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:5px;text-align:center;
+    color:#eaf2ff;font-weight:900;padding:6px 10px;
+    background:radial-gradient(circle at 50% 38%,#163066 0%,#0a0f1e 70%);
+    transition:background .35s;
+  }
+  .mon-emoji{font-size:42px;line-height:1;filter:drop-shadow(0 3px 4px rgba(0,0,0,.55))}
+  .mon-cap{font-size:12px;letter-spacing:.03em;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.75)}
+  .mon-stage.lv2{background:radial-gradient(circle at 50% 40%,#1f3f7a,#0a0f1e 72%)}
+  .mon-stage.lv2 .mon-cap{color:#8fc0ff}
+  .mon-stage.lv3{background:radial-gradient(circle at 50% 42%,#6a4410,#170d02 75%)}
+  .mon-stage.lv3 .mon-cap{color:#ffd05a}
+  .mon-stage.lv4{background:radial-gradient(circle at 50% 45%,#8a1238,#170006 75%)}
+  .mon-stage.lv4 .mon-cap{color:#ff8ebd}
+  .mon-stage.reach .mon-cap{
+    font-family:"Reggae One",cursive;font-size:17px;
+    animation:monThrob .5s ease-in-out infinite alternate;
+  }
+  @keyframes monThrob{from{transform:scale(1)}to{transform:scale(1.07)}}
+  .mon-anim .mon-emoji{animation:monPop .42s cubic-bezier(.2,1.7,.4,1) both}
+  .mon-anim .mon-cap{animation:monRise .42s ease both}
+  @keyframes monPop{0%{transform:scale(.3) rotate(-12deg);opacity:0}70%{transform:scale(1.13)}100%{transform:scale(1) rotate(0);opacity:1}}
+  @keyframes monRise{0%{transform:translateY(11px);opacity:0}100%{transform:none;opacity:1}}
+  .monitor.heat{animation:monHeat .28s linear infinite}
+  @keyframes monHeat{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+  .monitor.win{
+    box-shadow:inset 0 0 0 2px rgba(255,210,80,.5),
+      0 0 18px rgba(255,200,60,.7), 0 4px 0 var(--rosso-dark);
+  }
+
+  /* ---- slot machine (3 reels + stop buttons + start) ---- */
+  .slot{
+    position:relative;z-index:1;margin-bottom:12px;
+    gap:6px;
+    background:linear-gradient(180deg,#1a0a14,#3a0a18 60%,#1a0a14);
+    border:4px solid var(--rosso-dark);border-radius:14px;padding:8px 10px 10px;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),
+      inset 0 9px 22px rgba(0,0,0,.62), 0 4px 0 var(--rosso-dark);
+  }
+  .slot .reels{display:flex;gap:6px;justify-content:center;height:86px}
+  .slot .reel{
+    flex:1;height:86px;border-radius:9px;
+    background:linear-gradient(180deg,#fff 0%,#f4f8ff 60%,#dbe3ee 100%);
+    border:3px solid #1c1f2e;
+    box-shadow:inset 0 -8px 0 rgba(0,0,0,.13), inset 0 7px 0 rgba(255,255,255,.65),
+      inset 0 0 0 2px rgba(0,0,0,.08);
+    display:grid;place-items:center;overflow:hidden;position:relative;
+  }
+  .slot .stops{display:flex;gap:6px;margin-top:8px}
+  .stopbtn{
+    flex:1;height:32px;border:0;border-radius:8px;cursor:pointer;position:relative;
+    background:linear-gradient(180deg,#ffffff,#cfd6e2);color:#1a1d28;
+    font-family:"Reggae One",cursive;font-size:13px;letter-spacing:.04em;
+    box-shadow:0 3px 0 #5a6072, inset 0 1px 0 rgba(255,255,255,.7);
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .08s, box-shadow .08s, background .18s;
+  }
+  .stopbtn:not(:disabled):active{transform:translateY(2px);box-shadow:0 1px 0 #5a6072}
+  .stopbtn:disabled{opacity:.45;cursor:not-allowed}
+  .stopbtn.done{background:linear-gradient(180deg,#ffd23f,#e6a417);color:#3a1500;box-shadow:0 3px 0 #8a5a00, inset 0 1px 0 rgba(255,255,255,.55)}
+  .orderbadge{
+    display:none;position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+    background:var(--rosso);color:#fff;font-size:10px;padding:1px 7px;border-radius:99px;
+    font-family:"Reggae One",cursive;letter-spacing:0;box-shadow:0 1px 0 rgba(0,0,0,.4);
+  }
+  .machine.chance .orderbadge:not(:empty){display:inline-block}
+  .slotstart{
+    margin:0 0 10px;height:38px;border:0;border-radius:10px;cursor:pointer;
+    background:linear-gradient(180deg,#ff5b6e,#c2122c);color:#fff;width:100%;
+    font-family:"Reggae One",cursive;font-size:14px;letter-spacing:.05em;
+    box-shadow:0 3px 0 #7a0a1a, inset 0 1px 0 rgba(255,255,255,.4);
+    transition:transform .08s, box-shadow .08s, opacity .12s;
+  }
+  .machine .slotstart{display:none}
+  .machine.mode-slot .slotstart{display:block}
+  .slotstart:not(:disabled):active{transform:translateY(2px);box-shadow:0 1px 0 #7a0a1a}
+  .slotstart:disabled{opacity:.5;cursor:not-allowed}
+  .ordermiss{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);
+    background:rgba(255,40,80,.95);color:#fff;
+    padding:6px 14px;border-radius:99px;font-family:"Reggae One",cursive;
+    font-size:13px;letter-spacing:.04em;pointer-events:none;
+    opacity:0;z-index:6;text-shadow:0 1px 2px rgba(0,0,0,.6);
+    box-shadow:0 4px 14px rgba(0,0,0,.45);
+  }
+  .ordermiss.on{animation:ordMissAn 1.2s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes ordMissAn{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+    15%{opacity:1;transform:translate(-50%,-50%) scale(1.12)}
+    30%{transform:translate(-50%,-50%) scale(1)}
+    85%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(.95)}
+  }
+  .slot .reel::before{
+    content:"";position:absolute;left:0;right:0;top:50%;height:30px;
+    transform:translateY(-50%);pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,210,80,0) 0,rgba(255,210,80,.12) 50%,rgba(255,210,80,0));
+  }
+  .slot .slot-face{
+    font-size:46px;line-height:1;display:block;
+    filter:drop-shadow(0 2px 1px rgba(0,0,0,.18));
+    will-change:transform,filter;
+  }
+  .slot .reel.spinning .slot-face{
+    animation:slotSpin .08s linear infinite;filter:blur(.7px) drop-shadow(0 2px 1px rgba(0,0,0,.18));
+  }
+  @keyframes slotSpin{
+    0%{transform:translateY(-26px)}100%{transform:translateY(26px)}
+  }
+  .slot .reel.stop .slot-face{animation:slotStop .36s cubic-bezier(.2,1.55,.4,1) both}
+  @keyframes slotStop{
+    0%{transform:translateY(-34px)}55%{transform:translateY(8px)}80%{transform:translateY(-3px)}100%{transform:translateY(0)}
+  }
+  .slot-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:5;border-radius:10px}
+  .slot-flash.on{animation:monFl .55s ease both}
+  .slot.win{
+    box-shadow:inset 0 0 0 2px rgba(255,210,80,.6),
+      inset 0 9px 22px rgba(0,0,0,.5),
+      0 0 22px rgba(255,200,60,.8), 0 4px 0 var(--rosso-dark);
+    animation:slotWinPulse .8s ease infinite alternate;
+  }
+  .slot.win .reel{box-shadow:inset 0 -8px 0 rgba(210,140,0,.35), inset 0 7px 0 rgba(255,255,255,.7), 0 0 10px rgba(255,210,80,.7)}
+  @keyframes slotWinPulse{from{filter:brightness(1)}to{filter:brightness(1.16)}}
+
+  /* mode visibility */
+  .machine .slot{display:none}
+  .machine.mode-gacha .monitor{display:none}
+  .machine.mode-slot  .slot{display:flex;flex-direction:column}
+  .machine.mode-slot  .dome{display:none}
+  .machine.mode-slot  .crank{display:none}
+
   .capsules{position:absolute;inset:0}
   .cap{
     position:absolute;width:24px;height:24px;border-radius:50%;
@@ -493,6 +667,10 @@
   @media (prefers-reduced-motion:reduce){
     .bigcap,.aura,.rays,.spark,.r4 .bigcap .ch,.kaboom,.chancebar{animation:none}
     .shock,.rbanner,.coin,.cutin,.heat,.chancefx{display:none}
+    .monitor.heat,.mon-anim .mon-emoji,.mon-anim .mon-cap,
+    .mon-stage.reach .mon-cap,.mon-flash.on{animation:none}
+    .slot .reel.spinning .slot-face,.slot .reel.stop .slot-face,
+    .slot-flash.on,.slot.win,.ordermiss.on{animation:none}
   }
 
   /* ---- alcohol on/off toggle ---- */
@@ -516,6 +694,39 @@
   .alctog[aria-checked="true"] .al-knob{left:14px}
   .alctog:active{transform:scale(.99)}
 
+  /* ---- sound (mute + volume) ---- */
+  .sndrow{gap:10px}
+  .sndmute{
+    flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    border:0;background:none;font-family:inherit;color:#ffe07a;font-weight:900;
+    font-size:12px;line-height:1;padding:2px 2px;
+  }
+  .sndmute .snd-ic{font-size:16px;line-height:1;display:inline-block;width:18px;text-align:center}
+  .sndmute[aria-checked="true"] .snd-lab{opacity:.55;text-decoration:line-through}
+  .sndmute[aria-checked="true"] .snd-ic{filter:grayscale(1) brightness(.8)}
+  .sndmute:active{transform:scale(.97)}
+  .sndvol{
+    -webkit-appearance:none;appearance:none;flex:1;height:14px;background:transparent;cursor:pointer;
+  }
+  .sndvol::-webkit-slider-runnable-track{
+    height:6px;border-radius:99px;background:rgba(0,0,0,.35);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.5);
+  }
+  .sndvol::-moz-range-track{
+    height:6px;border-radius:99px;background:rgba(0,0,0,.35);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.5);
+  }
+  .sndvol::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;
+    background:var(--oro);border:2px solid #3a1500;margin-top:-7px;
+    box-shadow:0 1px 2px rgba(0,0,0,.5);
+  }
+  .sndvol::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:var(--oro);
+    border:2px solid #3a1500;box-shadow:0 1px 2px rgba(0,0,0,.5);
+  }
+  .sndvol:disabled{opacity:.45;cursor:not-allowed}
+
   /* ---- gachapon front panel ---- */
   .panel{
     position:relative;z-index:1;margin-top:11px;
@@ -529,6 +740,35 @@
     background:rgba(0,0,0,.16);border:2px solid var(--rosso-dark);
     border-radius:99px;padding:5px 10px 5px 14px}
   .set-lab{font-size:12px;font-weight:900;color:#ffe07a;flex:0 0 auto;white-space:nowrap}
+
+  /* ---- settings accordion ---- */
+  .settings{
+    background:rgba(0,0,0,.18);border:2px solid var(--rosso-dark);border-radius:14px;
+    padding:0;overflow:hidden;
+  }
+  .settings-h{
+    display:flex;align-items:center;justify-content:space-between;
+    list-style:none;cursor:pointer;user-select:none;
+    padding:7px 14px;font-family:"Reggae One",cursive;font-size:13px;
+    color:#ffe07a;letter-spacing:.04em;
+    background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(0,0,0,.18));
+  }
+  .settings-h::-webkit-details-marker{display:none}
+  .settings-h::marker{display:none;content:''}
+  .settings-caret{
+    color:#ffe07a;font-size:11px;transition:transform .25s ease;
+    display:inline-block;transform-origin:center;
+  }
+  .settings:not([open]) .settings-caret{transform:rotate(-90deg)}
+  .settings-h:hover{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(0,0,0,.18))}
+  .settings-body{
+    display:flex;flex-direction:column;gap:9px;padding:8px 9px 10px;
+    background:rgba(0,0,0,.12);
+    border-top:2px dashed rgba(255,255,255,.08);
+  }
+  .settings:not([open]) .settings-body{display:none}
+  /* alctog 内に直接置く想定なので余白調整 */
+  .settings-body .alctog{margin:0}
   .seg{flex:1;display:flex;gap:0;background:rgba(0,0,0,.18);border:2px solid var(--rosso-dark);
     border-radius:99px;padding:2px;overflow:hidden}
   .seg-b{
@@ -542,12 +782,8 @@
     display:flex;align-items:center;gap:9px;background:none;border:0;
     cursor:pointer;color:#fff;font-family:"Reggae One",cursive;font-size:13px;
     padding:0;letter-spacing:.04em;flex:0 0 auto;
+    margin:10px auto 4px;justify-content:center;
   }
-  .actionrow{
-    display:flex;align-items:center;gap:12px;width:100%;
-  }
-  .actionrow .alctog{flex:0 0 auto;width:auto}
-  .actionrow .crank{margin-left:auto}
   .crank .ctxt{text-shadow:1px 1px 0 rgba(0,0,0,.4)}
   .knob{
     width:50px;height:50px;border-radius:50%;position:relative;
@@ -671,10 +907,48 @@
       <button class="ssbtn on" data-store="saizeriya" role="tab" aria-selected="true">🍝 サイゼリヤ</button>
       <button class="ssbtn" data-store="ohsho" role="tab" aria-selected="false">🥟 餃子の王将</button>
     </div>
+    <div class="modesw" id="modesw" role="tablist" aria-label="モードを切り替え">
+      <button class="msbtn on" data-mode="gacha" role="tab" aria-selected="true">🎰 ガチャ</button>
+      <button class="msbtn" data-mode="slot" role="tab" aria-selected="false">🎲 スロット</button>
+    </div>
   </header>
 
-  <div class="machine" id="machine">
+  <div class="machine mode-gacha" id="machine">
+    <div class="monitor" id="monitor" aria-hidden="true">
+      <span class="mon-tag" id="monTag"></span>
+      <div class="mon-stage" id="monStage"></div>
+      <div class="mon-scan"></div>
+      <div class="mon-flash" id="monFlash"></div>
+    </div>
+    <button class="slotstart" id="slotstart">▶ SPIN</button>
+    <div class="slot" id="slot" aria-hidden="true">
+      <div class="reels">
+        <div class="reel" id="reel0"><span class="slot-face">🎰</span></div>
+        <div class="reel" id="reel1"><span class="slot-face">🎰</span></div>
+        <div class="reel" id="reel2"><span class="slot-face">🎰</span></div>
+      </div>
+      <div class="stops">
+        <button class="stopbtn" data-reel="0" disabled aria-label="左リール停止">
+          <span class="orderbadge" id="ord0"></span>
+          <span class="stoplabel">STOP</span>
+        </button>
+        <button class="stopbtn" data-reel="1" disabled aria-label="中リール停止">
+          <span class="orderbadge" id="ord1"></span>
+          <span class="stoplabel">STOP</span>
+        </button>
+        <button class="stopbtn" data-reel="2" disabled aria-label="右リール停止">
+          <span class="orderbadge" id="ord2"></span>
+          <span class="stoplabel">STOP</span>
+        </button>
+      </div>
+      <div class="ordermiss" id="orderMiss" aria-hidden="true">押し順ミス！継続率ダウン</div>
+      <div class="slot-flash" id="slotFlash"></div>
+    </div>
     <div class="dome"><div class="capsules" id="caps"></div></div>
+    <button class="crank" id="crank" aria-label="レバーをまわしてガチャを回す">
+      <span class="ctxt">まわす&nbsp;⟳</span>
+      <span class="knob"><span class="grip"></span></span>
+    </button>
     <div class="panel">
       <div class="energy" id="energyWrap">
         <span class="elabel">⚡</span>
@@ -682,27 +956,40 @@
         <span class="ecount" id="ecount">0/10</span>
       </div>
       <div class="chancebar" id="chanceWrap" hidden></div>
-      <div class="setrow">
-        <span class="set-lab">未開封ロック</span>
-        <div class="seg" id="cfSeg">
-          <button class="seg-b" data-th="">OFF</button>
-          <button class="seg-b" data-th="2">R↑</button>
-          <button class="seg-b" data-th="3">RR↑</button>
-          <button class="seg-b on" data-th="4">SR</button>
+      <details class="settings" id="settingsAcc">
+        <summary class="settings-h"><span>⚙ 設定</span><span class="settings-caret">▼</span></summary>
+        <div class="settings-body">
+          <div class="setrow">
+            <span class="set-lab">予算モード</span>
+            <div class="seg" id="bmSeg">
+              <button class="seg-b on" data-bm="normal">ノーマル&nbsp;¥500</button>
+              <button class="seg-b" data-bm="rich">リッチ&nbsp;¥1000</button>
+            </div>
+          </div>
+          <div class="setrow">
+            <span class="set-lab">未開封ロック</span>
+            <div class="seg" id="cfSeg">
+              <button class="seg-b" data-th="">OFF</button>
+              <button class="seg-b" data-th="2">R↑</button>
+              <button class="seg-b" data-th="3">RR↑</button>
+              <button class="seg-b on" data-th="4">SR</button>
+            </div>
+          </div>
+          <div class="setrow sndrow">
+            <button class="sndmute" id="sndMute" role="switch" aria-checked="false" aria-label="音をミュート">
+              <span class="snd-ic" id="sndIc">🔊</span>
+              <span class="snd-lab">サウンド</span>
+            </button>
+            <input class="sndvol" id="sndVol" type="range" min="0" max="100" step="1" value="80" aria-label="音量">
+          </div>
+          <button class="alctog" id="alctog" role="switch" aria-checked="true" aria-label="アルコールあり/なし切替">
+            <span class="al-lab"><span>🍷</span><span>アルコール</span></span>
+            <span class="al-right">
+              <span class="al-sw"><span class="al-knob"></span></span>
+            </span>
+          </button>
         </div>
-      </div>
-      <div class="actionrow">
-        <button class="alctog" id="alctog" role="switch" aria-checked="true" aria-label="アルコールあり/なし切替">
-          <span class="al-lab"><span>🍷</span><span>アルコール</span></span>
-          <span class="al-right">
-            <span class="al-sw"><span class="al-knob"></span></span>
-          </span>
-        </button>
-        <button class="crank" id="crank" aria-label="レバーをまわしてガチャを回す">
-          <span class="ctxt">まわす&nbsp;⟳</span>
-          <span class="knob"><span class="grip"></span></span>
-        </button>
-      </div>
+      </details>
     </div>
   </div>
 
@@ -722,7 +1009,7 @@
     <h2>📊 排出率</h2>
     <div class="ratebox" id="rateRows"></div>
     <div class="specbox" id="specBox"></div>
-    <p class="ratenote">予算 ¥1,000〜¥5,000 を100円刻みで抽選。高額ほど指数的に出にくく設定。<br>筐体（お店）ごとに大当り確率・突入条件・確変継続率が異なります。</p>
+    <p class="ratenote" id="rateNote">予算 ¥1,000〜¥5,000 を抽選。高額ほど指数的に出にくく設定。<br>筐体（お店）ごとに大当り確率・突入条件・確変継続率が異なります。</p>
   </div>
 
   <footer>
@@ -733,6 +1020,14 @@
   </footer>
 </div>
 
+<!-- iOS の画面収録(ReplayKit)は Web Audio 直出力を録れないため、効果音を
+     MediaStream 経由でこの <audio> から鳴らし「メディア音声」として収録対象にする。
+     さらに無音ループでオーディオセッションを収録向きに維持する。 -->
+<audio id="capAudio" playsinline style="display:none"></audio>
+<audio id="silentKeep" loop playsinline preload="auto" style="display:none"
+  src="data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=">
+</audio>
+
 <script>
 const STORES = {
   saizeriya: {
@@ -742,6 +1037,16 @@ const STORES = {
     tag: 'SAIZERIYA GACHA',
     theme: { rosso:'#0e8a43', rossoDark:'#084e27', verde:'#d11f3a', oro:'#e6a417' },
     spec: { type:'ノーマル機', decay:850, boost:1200, triggerLvl:3, stSpins:8, pHit:0.083 },
+    story: {
+      tag:'SAIZE STORY',
+      idle:['🍝','今日のサイゼ、何頼む？'],
+      intro:['📖','メニュー、めくる'],
+      journey:[['🍅','トマト系で攻める？'],['🧀','チーズ盛りも捨てがたい']],
+      reach:['🐌','まさかの エスカルゴ…リーチ！'],
+      super:['🔥','ドリア＆ワイン スーパーリーチ！！'],
+      miss:['🍽️','落ち着いた一皿で締め'],
+      win:['🍷','テーブル満卓ッ 大当たり！！']
+    },
     menu: [
       // [name, price, category, icon, isMain, isDessert, isDrink/alcohol]
       ["辛味チキン",300,"前菜","🍗",false,false,false],
@@ -843,6 +1148,16 @@ const STORES = {
     tag: 'OHSHO GACHA',
     theme: { rosso:'#c8102e', rossoDark:'#8e0a20', verde:'#0a7a3d', oro:'#e6a417' },
     spec: { type:'甘デジ', decay:1100, boost:1100, triggerLvl:2, stSpins:6, pHit:0.077 },
+    story: {
+      tag:'OHSHO STORY',
+      idle:['🥟','鉄鍋、あたたまってます'],
+      intro:['🧑‍🍳','見習い、鉄鍋を握る'],
+      journey:[['🔥','強火 入りましたッ'],['🥟','餃子、整列！']],
+      reach:['🍳','鍋ふり一閃…リーチ！'],
+      super:['🌪️','炎の鍋ふりッ スーパーリーチ！！'],
+      miss:['🍚','本日はあっさり定食でしめ'],
+      win:['🐉','満漢の宴 完成ッ 大当たり！！']
+    },
     menu: [
       // 餃子
       ["焼餃子",290,"餃子","🥟",false,false,false],
@@ -943,6 +1258,16 @@ const STORES = {
     tag: 'COCO ICHIBANYA GACHA',
     theme: { rosso:'#e9a100', rossoDark:'#a35f00', verde:'#c8102e', oro:'#b5630a' },
     spec: { type:'MAX機', decay:650, boost:1450, triggerLvl:3, stSpins:10, pHit:0.10 },
+    story: {
+      tag:'CURRY STORY',
+      idle:['🍛','スパイス、調合中…'],
+      intro:['🧑‍🍳','ルウの鍋に火をつける'],
+      journey:[['🍚','ライス 大盛り 完了'],['🥄','スパイス ひとさじ 投入！']],
+      reach:['🌶️','辛さレベル 上昇…リーチ！'],
+      super:['🔥','激辛ゲート 開放ッ スーパーリーチ！！'],
+      miss:['🍛','ふつうの一皿、でも うまい'],
+      win:['👑','全部のせ 完食王ッ 大当たり！！']
+    },
     menu: [
       // カレー（メイン）
       ["ポークカレー",604,"カレー","🍛",true,false,false],
@@ -1050,6 +1375,20 @@ let history=[];
 let energy=0;            // 0〜10。10でフル→次回10連
 let alcoholOn=true;      // アルコール込み/抜き切り替え
 let confirmThreshold=4; // このレア度(lvl)以上で開封必須（未開封ロック）。nullでオフ。初期値はSR
+// サウンド設定（localStorage に保存）
+let soundMuted=false, soundVolume=0.8;
+// 演出モード：'gacha'（モニタなし）／'slot'（絵柄揃え）
+let appMode='gacha';
+// 予算モード：'normal'=¥500 刻み／'rich'=¥1000 刻み（どちらも ¥1000〜¥5000）
+let budgetMode='normal';
+try{
+  const sv=localStorage.getItem('mg.snd.vol'); if(sv!=null){ const n=parseFloat(sv); if(isFinite(n)) soundVolume=Math.min(1,Math.max(0,n)); }
+  const sm=localStorage.getItem('mg.snd.mute'); if(sm!=null) soundMuted=(sm==='1');
+  const am=localStorage.getItem('mg.mode'); if(am==='slot'||am==='gacha') appMode=am;
+  const bm=localStorage.getItem('mg.budget'); if(bm==='normal'||bm==='rich') budgetMode=bm;
+}catch(e){}
+const BUDGET_MIN=1000, BUDGET_MAX=5000;
+function budgetStep(){ return budgetMode==='rich'?1000:500; }
 let mustOpen=false;        // 未開封ロック中フラグ
 const ENERGY_MAX=10;
 
@@ -1064,15 +1403,16 @@ function curSpec(){ return (STORES[currentStore] && STORES[currentStore].spec) |
 // 実質継続率（ST中に1回でも継続抽選を引ける確率）
 function continueRate(sp){ return 1-Math.pow(1-sp.pHit,sp.stSpins); }
 
-// 予算ガチャ：¥1,000〜¥5,000を100円刻みで、高額ほど指数的に出にくくする
+// 予算ガチャ：¥1,000〜¥5,000を予算モードの刻みで抽選し、高額ほど指数的に出にくくする
 function rollBudget(){
   const sp=curSpec();
+  const step=budgetStep();
   const steps=[];
   let weights=[], sum=0;
-  for(let b=1000;b<=5000;b+=100){
+  for(let b=BUDGET_MIN;b<=BUDGET_MAX;b+=step){
     const w = chanceMode
-      ? Math.exp((b-1000)/sp.boost)    // チャンス中：高予算（高レア）に大きく偏る
-      : Math.exp(-(b-1000)/sp.decay);  // 通常：低予算に偏る（筐体ごとに辛さが違う）
+      ? Math.exp((b-BUDGET_MIN)/sp.boost)    // チャンス中：高予算（高レア）に大きく偏る
+      : Math.exp(-(b-BUDGET_MIN)/sp.decay);  // 通常：低予算に偏る（筐体ごとに辛さが違う）
     steps.push(b); weights.push(w); sum+=w;
   }
   let r=Math.random()*sum;
@@ -1146,6 +1486,9 @@ function computeResult(){
 
 let pendingResult=null;
 let pendingTen=null;
+// モニタ演出のために結果を先読みしておく置き場（演出後に dispense が消費）
+let preSingle=null;
+let preTen=null;
 
 // エネルギーゲージ描画
 function renderEnergy(){
@@ -1176,6 +1519,8 @@ function renderChance(){
 // 1スピン分の結果レア度を受け取り、突入/継続/転落を判定
 function chanceAfter(lvl){
   const sp=curSpec();
+  // チャンスモード（確変ST RUSH）はスロットモード専用
+  if(appMode!=='slot') return;
   if(!chanceMode){
     if(lvl>=sp.triggerLvl){
       chanceMode=true; chanceStreak=1; chanceLeft=sp.stSpins;
@@ -1185,7 +1530,10 @@ function chanceAfter(lvl){
   }
   // チャンス中：この回が継続抽選に当たれば連チャン（SRは継続確定）。
   // 外れたらST残りを1消費し、0で転落。
-  const cont=(chanceStreak<MAX_STREAK) && (lvl>=4 || Math.random()<sp.pHit);
+  // スロットで押し順ミスした場合は pHit を半分に
+  let pHit = sp.pHit;
+  if(chanceOrderPenalty){ pHit *= 0.5; chanceOrderPenalty = false; }
+  const cont=(chanceStreak<MAX_STREAK) && (lvl>=4 || Math.random()<pHit);
   if(cont){
     chanceStreak++; chanceLeft=sp.stSpins;
     renderChance(); chanceFx('cont',chanceStreak);
@@ -1223,7 +1571,7 @@ function chanceFx(kind,streak){
 
 // レバーを回した後：レア度に応じたカプセルが排出口に出てくる
 function dispenseCapsule(){
-  pendingResult=computeResult();
+  pendingResult=preSingle||computeResult(); preSingle=null;
   const rare=budgetRarity(pendingResult.budget);
   mustOpen = (confirmThreshold!=null && rare.lvl>=confirmThreshold);
   try{
@@ -1389,10 +1737,13 @@ function celebrate(rare,scale){
   scale=scale||1;
   const lv=rare.lvl;
   const C=n=>Math.round(n*scale);
-  cutin(rare);
-  if(lv>=4) heatFlash(true);
-  else if(lv>=3) heatFlash(false);
-  if(lv>=2){ screenShake(lv>=3); shockwave(lv>=3); rarityBanner(rare); }
+  const slotFx=(appMode==='slot');
+  if(slotFx){
+    cutin(rare);
+    if(lv>=4) heatFlash(true);
+    else if(lv>=3) heatFlash(false);
+  }
+  if(lv>=2){ screenShake(lv>=3); shockwave(lv>=3); if(slotFx) rarityBanner(rare); }
   if(lv>=4){
     flashEl('flash big',700);
     setTimeout(()=>flashEl('flash',520),170);
@@ -1417,7 +1768,7 @@ function maxRareOf(list){
 
 // 10個のカプセルが排出される
 function dispenseTen(){
-  pendingTen=Array.from({length:10},()=>computeResult());
+  pendingTen=preTen||Array.from({length:10},()=>computeResult()); preTen=null;
   const mr=maxRareOf(pendingTen);
   mustOpen = (confirmThreshold!=null && mr.lvl>=confirmThreshold);
   try{
@@ -1667,8 +2018,58 @@ function renderHist(){
 const machine=document.getElementById('machine');
 
 /* ---- 効果音（Web Audio で「ガラガラ」を合成）---- */
-let actx;
-function AC(){ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); return actx; }
+let actx, masterGain, streamDest, capAudioEl, directOut=false;
+function AC(){
+  if(!actx){
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    masterGain = actx.createGain();
+    masterGain.gain.value = soundMuted ? 0 : soundVolume;
+    capAudioEl = document.getElementById('capAudio');
+    // iOS の画面収録(ReplayKit)は Web Audio の直出力を録れない。
+    // 出力を MediaStream 経由で <audio> 要素から鳴らすと「メディア音声」
+    // 扱いになり収録対象になる。play() 失敗時のみスピーカー直結に保険。
+    let viaMedia=false;
+    try{
+      if(capAudioEl && typeof actx.createMediaStreamDestination==='function'){
+        streamDest = actx.createMediaStreamDestination();
+        masterGain.connect(streamDest);
+        capAudioEl.srcObject = streamDest.stream;
+        capAudioEl.muted = false;
+        const p = capAudioEl.play();
+        if(p && p.catch) p.catch(()=>ensureDirectOut());
+        viaMedia=true;
+      }
+    }catch(e){ viaMedia=false; }
+    if(!viaMedia){ masterGain.connect(actx.destination); directOut=true; }
+  }
+  return actx;
+}
+// MediaStream 再生が不可だった場合の保険：端末スピーカーには必ず出す
+function ensureDirectOut(){
+  if(directOut || !masterGain || !actx) return;
+  try{ masterGain.connect(actx.destination); directOut=true; }catch(e){}
+}
+// 最初のユーザー操作で AudioContext を起こし、収録用 <audio> を再生開始。
+// 無音ループでオーディオセッションを収録向きに保持する（画面ロック対策にも）。
+let audioUnlocked=false;
+function unlockAudio(){
+  try{
+    const ctx=AC();
+    if(ctx.state==='suspended') ctx.resume();
+    const sk=document.getElementById('silentKeep');
+    if(sk){ const ps=sk.play(); if(ps&&ps.catch) ps.catch(()=>{}); }
+    if(capAudioEl && !directOut){ const pc=capAudioEl.play(); if(pc&&pc.catch) pc.catch(()=>{}); }
+    audioUnlocked=true;
+  }catch(e){}
+}
+['pointerdown','touchend','click','keydown'].forEach(ev=>
+  window.addEventListener(ev,unlockAudio,{passive:true}));
+function masterOut(ctx){ return masterGain || ctx.destination; }
+function applyMasterVolume(){
+  if(!masterGain || !actx) return;
+  const v = soundMuted ? 0 : soundVolume;
+  masterGain.gain.setTargetAtTime(v, actx.currentTime, 0.01);
+}
 
 function noiseBuffer(ctx,dur){
   const len=Math.floor(ctx.sampleRate*dur);
@@ -1690,7 +2091,7 @@ function rattleHit(ctx,t,gain){
   g.gain.setValueAtTime(0,t);
   g.gain.linearRampToValueAtTime(gain,t+0.004);
   g.gain.exponentialRampToValueAtTime(0.0008,t+0.07);
-  src.connect(bp).connect(g).connect(ctx.destination);
+  src.connect(bp).connect(g).connect(masterOut(ctx));
   src.start(t); src.stop(t+0.1);
 }
 
@@ -1709,7 +2110,7 @@ function crankRumble(ctx,t0,dur){
   const lg=ctx.createGain(); lg.gain.value=0.09;
   lfo.connect(lg).connect(g.gain);
   g.gain.linearRampToValueAtTime(0.0001,t0+dur);
-  src.connect(lp).connect(g).connect(ctx.destination);
+  src.connect(lp).connect(g).connect(masterOut(ctx));
   src.start(t0); src.stop(t0+dur);
   lfo.start(t0); lfo.stop(t0+dur);
 }
@@ -1724,7 +2125,7 @@ function dropChime(ctx,t){
   g.gain.setValueAtTime(0.0001,t);
   g.gain.linearRampToValueAtTime(0.22,t+0.02);
   g.gain.exponentialRampToValueAtTime(0.0008,t+0.4);
-  o.connect(g).connect(ctx.destination);
+  o.connect(g).connect(masterOut(ctx));
   o.start(t); o.stop(t+0.42);
 }
 
@@ -1737,7 +2138,7 @@ function dispenseSound(ctx,t,lvl){
     g.gain.setValueAtTime(0.0001,t0);
     g.gain.linearRampToValueAtTime(vol,t0+0.015);
     g.gain.exponentialRampToValueAtTime(0.0006,t0+dur);
-    o.connect(g).connect(ctx.destination);
+    o.connect(g).connect(masterOut(ctx));
     o.start(t0); o.stop(t0+dur+0.02);
   };
   if(lvl===0){            // C：素朴な「ことん」
@@ -1758,7 +2159,7 @@ function dispenseSound(ctx,t,lvl){
     g.gain.setValueAtTime(0.0001,t);
     g.gain.linearRampToValueAtTime(0.2,t+0.02);
     g.gain.exponentialRampToValueAtTime(0.0006,t+0.42);
-    o.connect(g).connect(ctx.destination);
+    o.connect(g).connect(masterOut(ctx));
     o.start(t); o.stop(t+0.46);
     [1568,2093,2637,3136].forEach((f,i)=>tone(f,t+0.30+i*0.06,0.5,0.09,'sine'));
   }
@@ -1774,7 +2175,7 @@ function buttonClick(ctx,t){
   g.gain.setValueAtTime(0.0001,t);
   g.gain.linearRampToValueAtTime(0.2,t+0.006);
   g.gain.exponentialRampToValueAtTime(0.0006,t+0.11);
-  o.connect(g).connect(ctx.destination);
+  o.connect(g).connect(masterOut(ctx));
   o.start(t); o.stop(t+0.12);
   // 短いクリックノイズを重ねて打鍵感を強調
   const s=ctx.createBufferSource();
@@ -1783,7 +2184,7 @@ function buttonClick(ctx,t){
   const ng=ctx.createGain();
   ng.gain.setValueAtTime(0.18,t);
   ng.gain.exponentialRampToValueAtTime(0.0006,t+0.04);
-  s.connect(hp).connect(ng).connect(ctx.destination);
+  s.connect(hp).connect(ng).connect(masterOut(ctx));
   s.start(t); s.stop(t+0.05);
 }
 
@@ -1796,7 +2197,7 @@ function popOpen(ctx,t){
   const cg=ctx.createGain();
   cg.gain.setValueAtTime(0.5,t);
   cg.gain.exponentialRampToValueAtTime(0.0006,t+0.022);
-  crack.connect(hp).connect(cg).connect(ctx.destination);
+  crack.connect(hp).connect(cg).connect(masterOut(ctx));
   crack.start(t); crack.stop(t+0.04);
 
   // 2) ポクッ：中空プラスチックの胴鳴り（速い減衰＋わずかなピッチ下降）
@@ -1808,7 +2209,7 @@ function popOpen(ctx,t){
   bg.gain.setValueAtTime(0.0001,t+0.004);
   bg.gain.linearRampToValueAtTime(0.34,t+0.012);
   bg.gain.exponentialRampToValueAtTime(0.0006,t+0.14);
-  body.connect(bg).connect(ctx.destination);
+  body.connect(bg).connect(masterOut(ctx));
   body.start(t+0.004); body.stop(t+0.16);
 
   // 3) もう片方の殻が「カッ」と弾ける小クリック
@@ -1818,7 +2219,7 @@ function popOpen(ctx,t){
   const kg=ctx.createGain();
   kg.gain.setValueAtTime(0.28,t2);
   kg.gain.exponentialRampToValueAtTime(0.0006,t2+0.03);
-  click.connect(bp).connect(kg).connect(ctx.destination);
+  click.connect(bp).connect(kg).connect(masterOut(ctx));
   click.start(t2); click.stop(t2+0.04);
 }
 
@@ -1836,7 +2237,7 @@ function fanfare(ctx,t,lvl){
     g.gain.setValueAtTime(0.0001,dt);
     g.gain.linearRampToValueAtTime(lvl>=4?0.16:0.11,dt+0.02);
     g.gain.exponentialRampToValueAtTime(0.0006,dt+0.5);
-    o.connect(g).connect(ctx.destination);
+    o.connect(g).connect(masterOut(ctx));
     o.start(dt); o.stop(dt+0.55);
   });
   if(lvl>=4){ // 最後にキラキラ余韻
@@ -1847,7 +2248,7 @@ function fanfare(ctx,t,lvl){
       g.gain.setValueAtTime(0.0001,dt);
       g.gain.linearRampToValueAtTime(0.09,dt+0.02);
       g.gain.exponentialRampToValueAtTime(0.0005,dt+0.6);
-      o.connect(g).connect(ctx.destination);
+      o.connect(g).connect(masterOut(ctx));
       o.start(dt); o.stop(dt+0.65);
     });
   }
@@ -1882,7 +2283,7 @@ function playGachaBig(durationMs){
   sg.gain.setValueAtTime(0.0001,t0);
   sg.gain.linearRampToValueAtTime(0.12,t0+0.05);
   sg.gain.exponentialRampToValueAtTime(0.0006,t0+sec);
-  sub.connect(sg).connect(ctx.destination);
+  sub.connect(sg).connect(masterOut(ctx));
   sub.start(t0); sub.stop(t0+sec);
   // 密度の高いカラカラ（単発より速く強く）
   let t=t0+0.02;
@@ -1898,7 +2299,7 @@ function playGachaBig(durationMs){
   swg.gain.setValueAtTime(0.0001,t0+sec*0.55);
   swg.gain.linearRampToValueAtTime(0.16,t0+sec-0.04);
   swg.gain.exponentialRampToValueAtTime(0.0006,t0+sec+0.05);
-  sweep.connect(swg).connect(ctx.destination);
+  sweep.connect(swg).connect(masterOut(ctx));
   sweep.start(t0+sec*0.55); sweep.stop(t0+sec+0.06);
 }
 
@@ -1916,19 +2317,29 @@ function popOpenMulti(ctx,t,n){
   g.gain.setValueAtTime(0.0001,tEnd);
   g.gain.linearRampToValueAtTime(0.34,tEnd+0.012);
   g.gain.exponentialRampToValueAtTime(0.0006,tEnd+0.22);
-  o.connect(g).connect(ctx.destination);
+  o.connect(g).connect(masterOut(ctx));
   o.start(tEnd); o.stop(tEnd+0.24);
 }
 
 const crank=document.getElementById('crank');
 let spinning=false;
 
-function safeSound(ten){
+// モード別の演出尺。効果音はこの長さに合わせて伸ばす
+function modeAnimMs(lvl){
+  if(typeof monReduced==='function' && monReduced()) return 520;
+  // スロットは手動停止で長さが読めないため、開始時のガラガラを短めに鳴らし、
+  // 以降は STOP ボタン毎の rattleHit でリズムを作る
+  if(appMode==='slot') return 700;
+  // ガチャ：モニタなし、ドームのコロコロ感だけで短く
+  return 680;
+}
+function safeSound(ten,lvl){
   try{
     const ctx=AC();
     if(ctx.state==='suspended') ctx.resume();
     buttonClick(ctx,ctx.currentTime);
-    if(ten) playGachaBig(525); else playGacha(525);
+    const dur=Math.max(525,modeAnimMs(lvl|0)-60);
+    if(ten) playGachaBig(dur); else playGacha(dur);
   }catch(e){/* 音声が使えない環境でもガチャは動かす */}
 }
 
@@ -1939,17 +2350,269 @@ function flashLock(){
   sc.classList.remove('lockshake');void sc.offsetWidth;sc.classList.add('lockshake');
 }
 
+// ===== パチンコ風 液晶モニタ演出 =====
+const monitorEl=document.getElementById('monitor');
+const monStage=document.getElementById('monStage');
+const monTag=document.getElementById('monTag');
+const monFlash=document.getElementById('monFlash');
+const monReduced=()=>window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+const FALLBACK_STORY={tag:'GACHA',idle:['🎰','レバーを回そう！'],
+  intro:['🎬','物語、はじまる'],journey:[['✨','チャージ中…'],['💫','運勢 上昇中…']],
+  reach:['🔔','リーチ！'],super:['🔥','スーパーリーチ！！'],
+  miss:['🍀','本日は ふつう運'],win:['👑','大当たり！！']};
+const storyOf=()=>(STORES[currentStore]&&STORES[currentStore].story)||FALLBACK_STORY;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function monShowScene(emoji,text,cls,reach){
+  monStage.className='mon-stage mon-anim'+(cls?(' lv'+cls):'')+(reach?' reach':'');
+  monStage.innerHTML=`<div class="mon-emoji">${emoji}</div><div class="mon-cap">${text}</div>`;
+  void monStage.offsetWidth;
+}
+function monFlashOn(){
+  if(!monFlash) return;
+  monFlash.classList.remove('on');void monFlash.offsetWidth;monFlash.classList.add('on');
+}
+function monitorIdle(){
+  if(!monitorEl) return;
+  monitorEl.classList.remove('heat','win');
+  const st=storyOf();
+  if(monTag) monTag.textContent=st.tag||'';
+  monStage.className='mon-stage mon-anim';
+  monStage.innerHTML=`<div class="mon-emoji">${st.idle[0]}</div><div class="mon-cap">${st.idle[1]}</div>`;
+}
+
+// レア度(lvl)から演出シーンの並びを組み立てる（パチンコのリーチ昇格イメージ）
+function monBeats(st,lvl){
+  const b=[];
+  b.push({e:st.intro[0],t:st.intro[1],c:1,d:520});
+  b.push({e:st.journey[0][0],t:st.journey[0][1],c:1,d:520});
+  if(lvl>=1) b.push({e:st.journey[1][0],t:st.journey[1][1],c:1,d:520});
+  if(lvl>=2) b.push({e:st.reach[0],t:st.reach[1],c:2,d:900,r:true});
+  if(lvl>=3) b.push({e:st.super[0],t:st.super[1],c:3,d:980,r:true});
+  if(lvl>=4){
+    b.push({e:'⚡',t:'激アツ 確定…！',c:4,d:760,r:true,heat:true});
+    b.push({e:st.win[0],t:st.win[1],c:4,d:1080,r:true,win:true,fl:true});
+  }else if(lvl===3){
+    b.push({e:'🎊',t:'大当たり!?',c:3,d:760,fl:true});
+  }else{
+    b.push({e:st.miss[0],t:st.miss[1],c:Math.min(lvl,1),d:680});
+  }
+  return b;
+}
+
+async function runMonitor(lvl){
+  if(!monitorEl){ return; }
+  const st=storyOf();
+  if(monReduced()){
+    monShowScene(st.intro[0],'運勢を占い中…',Math.min(lvl,4),lvl>=2);
+    await sleep(520);
+    return;
+  }
+  for(const s of monBeats(st,lvl)){
+    if(s.heat) monitorEl.classList.add('heat');
+    if(s.win)  monitorEl.classList.add('win');
+    monShowScene(s.e,s.t,s.c,s.r);
+    if(s.fl) monFlashOn();
+    await sleep(s.d);
+    if(s.heat) monitorEl.classList.remove('heat');
+  }
+}
+
+// ===== スロット演出（3 リール絵柄揃え）=====
+const slotEl=document.getElementById('slot');
+const slotFlashEl=document.getElementById('slotFlash');
+const reelEls=[document.getElementById('reel0'),document.getElementById('reel1'),document.getElementById('reel2')];
+const reelFaceEls=reelEls.map(r=>r&&r.querySelector('.slot-face'));
+const SLOT_POOLS={
+  saizeriya:['🍝','🍅','🧀','🍷','🐌','⭐'],
+  ohsho    :['🥟','🔥','🍳','🐉','🍚','⭐'],
+  cocoichi :['🍛','🌶️','🍚','🥄','🍻','⭐'],
+};
+const SLOT_JACKPOT='👑';
+function slotPool(){ return SLOT_POOLS[currentStore] || ['🍒','🍋','🔔','🍇','⭐','🍀']; }
+function slotTargets(lvl){
+  const pool=slotPool();
+  const pick=()=>pool[Math.floor(Math.random()*pool.length)];
+  if(lvl>=4) return [SLOT_JACKPOT,SLOT_JACKPOT,SLOT_JACKPOT];
+  if(lvl===3){ const s=pick(); return [s,s,s]; }
+  if(lvl===2){ const a=pick(); let b=pick(); while(b===a) b=pick(); return [a,a,b]; }
+  // lvl 0/1: all different
+  const shuf=pool.slice().sort(()=>Math.random()-0.5);
+  return [shuf[0],shuf[1],shuf[2]];
+}
+const stopBtns=[document.querySelector('.stopbtn[data-reel="0"]'),document.querySelector('.stopbtn[data-reel="1"]'),document.querySelector('.stopbtn[data-reel="2"]')];
+const orderBadges=[document.getElementById('ord0'),document.getElementById('ord1'),document.getElementById('ord2')];
+const slotstartBtn=document.getElementById('slotstart');
+const orderMissEl=document.getElementById('orderMiss');
+
+let slotPending=null;           // {stopReel(i)} 中はクリックで停止
+let chanceOrderPenalty=false;   // 押し順ミス → chanceAfter で pHit を半減
+
+function slotIdle(){
+  if(!reelFaceEls[0]) return;
+  const pool=slotPool();
+  reelFaceEls.forEach((f,i)=>{ if(f) f.textContent=pool[i%pool.length]; });
+  reelEls.forEach(r=>r&&r.classList.remove('spinning','stop'));
+  stopBtns.forEach(b=>{ if(b){ b.classList.remove('done'); b.disabled=true; } });
+  setOrderBadges(null);
+  if(slotEl) slotEl.classList.remove('win');
+}
+
+function makePressOrder(){
+  const a=[0,1,2];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function setOrderBadges(order){
+  if(!orderBadges[0]) return;
+  if(!order){ orderBadges.forEach(b=>b&&(b.textContent='')); return; }
+  // order = [reel,reel,reel] in press order. badge under reel shows its rank.
+  const rank={};
+  order.forEach((r,i)=>{ rank[r]=i+1; });
+  orderBadges.forEach((b,i)=>{ if(b) b.textContent = String(rank[i]||''); });
+}
+function showOrderMiss(){
+  if(!orderMissEl) return;
+  orderMissEl.classList.remove('on'); void orderMissEl.offsetWidth; orderMissEl.classList.add('on');
+}
+
+// スロット用：START・各 STOP に同期して進むモニタシーン
+function slotBeats(st,lvl){
+  const b=[];
+  // [0] START 押下直後（リール回転中）
+  b.push({e:st.intro[0],t:st.intro[1],c:1});
+  // [1] 1 つ目停止後
+  b.push({e:st.journey[0][0],t:st.journey[0][1],c:1});
+  // [2] 2 つ目停止後
+  if(lvl>=3)      b.push({e:st.super[0],t:st.super[1],c:3,r:true});
+  else if(lvl>=2) b.push({e:st.reach[0],t:st.reach[1],c:2,r:true});
+  else            b.push({e:(lvl>=1?st.journey[1][0]:st.journey[0][0]),
+                          t:(lvl>=1?st.journey[1][1]:st.journey[0][1]),c:1});
+  // [3] 3 つ目停止後（最終結果）
+  if(lvl>=4)      b.push({e:st.win[0],t:st.win[1],c:4,r:true,heat:true,win:true,fl:true});
+  else if(lvl===3)b.push({e:'🎊',t:'大当たり!?',c:3,fl:true,win:true});
+  else            b.push({e:st.miss[0],t:st.miss[1],c:Math.min(lvl,1)});
+  return b;
+}
+function applyMonBeat(beat){
+  if(!beat||!monitorEl) return;
+  if(beat.heat) monitorEl.classList.add('heat');
+  if(beat.win)  monitorEl.classList.add('win');
+  monShowScene(beat.e,beat.t,beat.c,beat.r);
+  if(beat.fl) monFlashOn();
+}
+
+async function runSlot(lvl){
+  if(!slotEl||!reelFaceEls[0]) return;
+  // モニタは一度クリーンに
+  if(monitorEl){ monitorEl.classList.remove('heat','win'); }
+  slotEl.classList.remove('win');
+  const targets=slotTargets(lvl);
+  const pool=slotPool();
+  const orderTarget = chanceMode ? makePressOrder() : null;
+  setOrderBadges(orderTarget);
+  const orderActual=[];
+  const beats=slotBeats(storyOf(),lvl);
+
+  if(monReduced()){
+    reelFaceEls.forEach((f,i)=>{ if(f) f.textContent=targets[i]; });
+    applyMonBeat(beats[beats.length-1]);
+    if(lvl>=3 && slotEl) slotEl.classList.add('win');
+    chanceOrderPenalty=false;     // reduced-motion はミス判定なし
+    setOrderBadges(null);
+    await sleep(520); return;
+  }
+
+  // [0] START 直後のシーン
+  applyMonBeat(beats[0]);
+  reelEls.forEach(r=>{ r.classList.remove('stop'); r.classList.add('spinning'); });
+  stopBtns.forEach(b=>{ if(b){ b.classList.remove('done'); b.disabled=false; } });
+
+  // スピン中はランダム絵柄を高速で差し替え
+  const tickers=reelFaceEls.map(f=>setInterval(()=>{
+    if(f) f.textContent=pool[Math.floor(Math.random()*pool.length)];
+  },70));
+
+  await new Promise(resolve=>{
+    const stopped=[false,false,false];
+    let pressN=0;
+    const stopReel=(i)=>{
+      if(stopped[i]) return;
+      stopped[i]=true;
+      orderActual.push(i);
+      pressN++;
+      clearInterval(tickers[i]);
+      if(reelFaceEls[i]) reelFaceEls[i].textContent=targets[i];
+      if(reelEls[i]){ reelEls[i].classList.remove('spinning'); reelEls[i].classList.add('stop'); }
+      if(stopBtns[i]){ stopBtns[i].classList.add('done'); stopBtns[i].disabled=true; }
+      try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); rattleHit(ctx,ctx.currentTime,0.22); }catch(e){}
+      // 押下ごとにモニタを 1 シーン進める
+      applyMonBeat(beats[pressN]);
+      if(stopped.every(Boolean)){
+        slotPending=null;
+        resolve();
+      }
+    };
+    slotPending={ stopReel };
+  });
+
+  await sleep(220);
+
+  const win = targets[0]===targets[1] && targets[1]===targets[2];
+  if(win){
+    if(slotEl){ slotEl.classList.add('win'); }
+    if(slotFlashEl){ slotFlashEl.classList.remove('on'); void slotFlashEl.offsetWidth; slotFlashEl.classList.add('on'); }
+    try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); fanfare(ctx,ctx.currentTime+0.02,Math.min(4,lvl)); }catch(e){}
+    await sleep(420);
+  }
+
+  // 押し順チェック（チャンスモード時のみ）
+  if(orderTarget){
+    const correct = orderTarget.every((r,i)=>orderActual[i]===r);
+    chanceOrderPenalty = !correct;
+    if(!correct) showOrderMiss();
+  }else{
+    chanceOrderPenalty = false;
+  }
+  setOrderBadges(null);
+}
+
+// 停止ボタン／START ボタンの配線
+stopBtns.forEach((b,i)=>{
+  if(!b) return;
+  b.addEventListener('click',()=>{
+    if(slotPending) slotPending.stopReel(i);
+  });
+});
+if(slotstartBtn) slotstartBtn.addEventListener('click',startGacha);
+
 function startGacha(){
   if(spinning) return;
   if(mustOpen){ flashLock(); return; }
   spinning=true;
   const tenMode = energy>=ENERGY_MAX;
-  safeSound(tenMode);
+  // モニタ演出を結果のレア度で煽るため、先に抽選しておく
+  let lvl;
+  try{
+    if(tenMode){
+      preTen=Array.from({length:10},()=>computeResult());
+      lvl=maxRareOf(preTen).lvl;
+    }else{
+      preSingle=computeResult();
+      lvl=budgetRarity(preSingle.budget).lvl;
+    }
+  }catch(e){ console.error(e); lvl=0; }
+  safeSound(tenMode,lvl);
   crank.classList.add('turning');
   crank.disabled=true;
+  if(slotstartBtn) slotstartBtn.disabled=true;
   machine.classList.add('rolling');
-  setTimeout(()=>{
-    machine.classList.remove('rolling');
+  setTimeout(()=>machine.classList.remove('rolling'),520);
+  (async()=>{
+    try{
+      if(appMode==='slot') await runSlot(lvl);          // モニタも STOP に同期して進む
+      else                 await sleep(modeAnimMs(lvl));  // ガチャ：モニタ無し
+    }catch(e){ console.error(e); }
     crank.classList.remove('turning');
     try{
       if(tenMode){
@@ -1961,12 +2624,45 @@ function startGacha(){
         renderEnergy();
       }
     }catch(e){ console.error(e); }
+    // モニタは最後の演出（勝利シーン等）を残し、次のスピン開始時に上書きする
     spinning=false;
     crank.disabled=false;
-  },525);
+    if(slotstartBtn) slotstartBtn.disabled=false;
+  })();
 }
 
 crank.addEventListener('click',startGacha);   // ガチャポンのレバーが開始アクション
+
+// モード切替（ガチャ / スロット）
+const modesw=document.getElementById('modesw');
+function applyMode(m){
+  if(m!=='gacha' && m!=='slot') m='gacha';
+  appMode=m;
+  try{ localStorage.setItem('mg.mode',m); }catch(e){}
+  machine.classList.toggle('mode-gacha', m==='gacha');
+  machine.classList.toggle('mode-slot',  m==='slot');
+  // ガチャモードではチャンスモードを使わないので、切替時に状態を掃除
+  if(m==='gacha' && chanceMode){
+    chanceMode=false; chanceLeft=0; chanceStreak=0;
+    renderChance();
+  }
+  modesw.querySelectorAll('.msbtn').forEach(b=>{
+    const on=b.dataset.mode===m;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-selected',on?'true':'false');
+  });
+  if(!spinning){
+    monitorIdle();           // モニタは両モード共通の素材として常時更新
+    if(m==='slot') slotIdle();
+  }
+  syncSlotLockDefault();
+}
+modesw.addEventListener('click',e=>{
+  const b=e.target.closest('.msbtn'); if(!b) return;
+  if(spinning) return;        // スピン中のモード切替は禁止
+  applyMode(b.dataset.mode);
+});
+applyMode(appMode);
 
 // アルコールあり/なし 切り替え
 const alctog=document.getElementById('alctog');
@@ -1974,6 +2670,35 @@ alctog.addEventListener('click',()=>{
   alcoholOn=!alcoholOn;
   alctog.setAttribute('aria-checked',alcoholOn?'true':'false');
 });
+
+// サウンド：ミュート切替 / 音量スライダー
+const sndMute=document.getElementById('sndMute');
+const sndVol=document.getElementById('sndVol');
+const sndIc=document.getElementById('sndIc');
+function sndIcon(){
+  if(soundMuted||soundVolume<=0) return '🔇';
+  if(soundVolume<0.34) return '🔈';
+  if(soundVolume<0.7)  return '🔉';
+  return '🔊';
+}
+function renderSnd(){
+  sndMute.setAttribute('aria-checked',soundMuted?'true':'false');
+  sndVol.value=Math.round(soundVolume*100);
+  sndVol.disabled=soundMuted;
+  sndIc.textContent=sndIcon();
+}
+sndMute.addEventListener('click',()=>{
+  soundMuted=!soundMuted;
+  try{ localStorage.setItem('mg.snd.mute',soundMuted?'1':'0'); }catch(e){}
+  applyMasterVolume(); renderSnd();
+});
+sndVol.addEventListener('input',()=>{
+  soundVolume=Math.min(1,Math.max(0,(+sndVol.value||0)/100));
+  if(soundMuted && soundVolume>0){ soundMuted=false; try{localStorage.setItem('mg.snd.mute','0');}catch(e){} }
+  try{ localStorage.setItem('mg.snd.vol',String(soundVolume)); }catch(e){}
+  applyMasterVolume(); renderSnd();
+});
+renderSnd();
 
 // お店切り替え（サイゼリヤ / 餃子の王将）
 const storesw=document.getElementById('storesw');
@@ -2003,6 +2728,23 @@ function applyStore(key){
     b.setAttribute('aria-selected',on?'true':'false');
   });
   renderRates(); renderSpec(); renderChance();
+  syncSlotLockDefault();
+  if(!spinning){
+    monitorIdle();              // モニタは両モードで使うので常に更新（スロットでも表示中）
+    if(appMode==='slot') slotIdle();
+  }
+}
+
+// スロットモードでは未開封ロックのしきい値を店舗の突入上限（triggerLvl）に揃える
+function syncSlotLockDefault(){
+  if(appMode!=='slot') return;
+  const lvl=curSpec().triggerLvl;
+  confirmThreshold=lvl;
+  const seg=document.getElementById('cfSeg');
+  if(!seg) return;
+  seg.querySelectorAll('.seg-b').forEach(b=>{
+    b.classList.toggle('on', b.dataset.th!=='' && +b.dataset.th===lvl);
+  });
 }
 storesw.addEventListener('click',e=>{
   const b=e.target.closest('.ssbtn');
@@ -2020,12 +2762,30 @@ cfSeg.addEventListener('click',e=>{
   confirmThreshold = b.dataset.th==='' ? null : +b.dataset.th;
 });
 
+// 予算モード切替（ノーマル ¥500 刻み / リッチ ¥1000 刻み）
+const bmSeg=document.getElementById('bmSeg');
+function applyBudgetMode(m){
+  if(m!=='normal'&&m!=='rich') m='normal';
+  budgetMode=m;
+  try{ localStorage.setItem('mg.budget',m); }catch(e){}
+  bmSeg.querySelectorAll('.seg-b').forEach(b=>{
+    b.classList.toggle('on', b.dataset.bm===m);
+  });
+  renderRates(); renderSpec(); renderChance();
+}
+bmSeg.addEventListener('click',e=>{
+  const b=e.target.closest('.seg-b'); if(!b) return;
+  applyBudgetMode(b.dataset.bm);
+});
+applyBudgetMode(budgetMode);
+
 // 排出率を rollBudget と同一の重み付けから算出して表示
 function renderRates(){
   const sp=curSpec();
+  const step=budgetStep();
   const tiers={}; let sum=0;
-  for(let b=1000;b<=5000;b+=100){
-    const w=Math.exp(-(b-1000)/sp.decay);   // rollBudget（通常時）と同じ式
+  for(let b=BUDGET_MIN;b<=BUDGET_MAX;b+=step){
+    const w=Math.exp(-(b-BUDGET_MIN)/sp.decay);   // rollBudget（通常時）と同じ式
     const r=budgetRarity(b);
     if(!tiers[r.lvl]) tiers[r.lvl]={lvl:r.lvl,t:r.t,c:r.c,w:0};
     tiers[r.lvl].w+=w; sum+=w;
@@ -2050,9 +2810,10 @@ function renderSpec(){
   const s=STORES[currentStore], sp=curSpec();
   const TRIG={2:'R レア',3:'RR ダブルレア',4:'SR スーパーレア'};
   // 通常時の重みで、突入条件レア度以上を引く確率＝RUSH突入率
+  const step=budgetStep();
   let sum=0, hit=0;
-  for(let b=1000;b<=5000;b+=100){
-    const w=Math.exp(-(b-1000)/sp.decay);
+  for(let b=BUDGET_MIN;b<=BUDGET_MAX;b+=step){
+    const w=Math.exp(-(b-BUDGET_MIN)/sp.decay);
     sum+=w;
     if(budgetRarity(b).lvl>=sp.triggerLvl) hit+=w;
   }
