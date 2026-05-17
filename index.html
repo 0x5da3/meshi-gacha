@@ -72,6 +72,7 @@
 
   /* ---- store switcher ---- */
   .storesw{
+    position:relative;
     display:inline-flex;flex-wrap:wrap;gap:0;background:rgba(255,255,255,.6);
     border:2px solid var(--rosso);border-radius:99px;
     padding:2px;margin-top:6px;max-width:100%;
@@ -89,10 +90,20 @@
 
   /* ---- mode switcher (ガチャ / スロット) ---- */
   .modesw{
+    position:relative;
     display:inline-flex;gap:0;background:rgba(255,255,255,.6);
     border:2px solid var(--rosso);border-radius:99px;padding:2px;margin:5px 0 0 5px;
     box-shadow:2px 2px 0 rgba(0,0,0,.12);vertical-align:middle;
   }
+  .swhint{
+    position:absolute;left:50%;top:-7px;transform:translate(-50%,-100%) translateY(4px);
+    background:rgba(20,20,28,.86);color:#fff8d4;
+    font-family:"Reggae One",cursive;font-size:10px;letter-spacing:.04em;
+    padding:3px 9px;border-radius:99px;white-space:nowrap;pointer-events:none;
+    opacity:0;box-shadow:0 2px 8px rgba(0,0,0,.35);z-index:6;
+    transition:opacity .18s ease, transform .22s ease;
+  }
+  .swhint.on{opacity:1;transform:translate(-50%,-100%)}
   .msbtn{
     border:0;background:none;cursor:pointer;
     font-family:"Reggae One",cursive;font-size:11px;
@@ -3308,9 +3319,25 @@ function applyMode(m){
 }
 modesw.addEventListener('click',e=>{
   const b=e.target.closest('.msbtn'); if(!b) return;
-  if(spinning) return;        // スピン中のモード切替は禁止
+  if(spinning){ showSwHint(modesw,'回し中は切替できません'); return; }
   applyMode(b.dataset.mode);
 });
+
+// 切替不可時の控えめなインライン通知（storesw / modesw 共用）
+function showSwHint(host,msg){
+  if(!host) return;
+  let hint=host.querySelector(':scope > .swhint');
+  if(!hint){
+    hint=document.createElement('span');
+    hint.className='swhint';
+    hint.setAttribute('aria-live','polite');
+    host.appendChild(hint);
+  }
+  hint.textContent=msg;
+  hint.classList.remove('on'); void hint.offsetWidth; hint.classList.add('on');
+  clearTimeout(host._swHintT);
+  host._swHintT=setTimeout(()=>hint.classList.remove('on'),1200);
+}
 applyMode(appMode);
 
 // アルコールあり/なし 切り替え
@@ -3413,7 +3440,8 @@ storesw.addEventListener('click',e=>{
   const b=e.target.closest('.ssbtn');
   if(!b||b.classList.contains('on')) return;
   // スロット/ガチャ実行中、またはカプセル未開封の間は店舗切替を禁止
-  if(spinning||awaitingOpen){ if(awaitingOpen) flashLock(); return; }
+  if(spinning){ showSwHint(storesw,'回し中は切替できません'); return; }
+  if(awaitingOpen){ flashLock(); return; }
   applyStore(b.dataset.store);
 });
 
