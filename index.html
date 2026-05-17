@@ -452,9 +452,47 @@
     100%{opacity:0;box-shadow:inset 0 0 140px 60px rgba(120,220,255,0)}
   }
 
+  /* ===== チャンスモード（確変ST RUSH）===== */
+  .chancebar{
+    display:flex;align-items:center;gap:7px;margin-top:8px;
+    background:linear-gradient(90deg,#b3001b,#ff7a00);
+    border:2px solid #ffd23f;border-radius:99px;padding:5px 12px;color:#fff;
+    font-family:"Reggae One",cursive;font-size:12px;letter-spacing:.02em;
+    animation:cmpulse 1s ease-in-out infinite;
+  }
+  .chancebar[hidden]{display:none}
+  .chancebar .cm-t{font-size:12px}
+  .chancebar .cm-st{margin-left:auto;background:rgba(0,0,0,.28);padding:2px 9px;border-radius:99px;font-size:11px}
+  .chancebar .cm-rn{background:#fff;color:var(--rosso);padding:2px 9px;border-radius:99px;font-size:12px}
+  @keyframes cmpulse{
+    0%,100%{box-shadow:0 0 0 2px rgba(255,210,80,.35),0 0 12px 2px rgba(255,140,0,.55)}
+    50%{box-shadow:0 0 0 2px rgba(255,210,80,.75),0 0 22px 7px rgba(255,140,0,.95)}
+  }
+  .machine.chance{
+    box-shadow:0 9px 0 var(--rosso-dark),0 0 0 3px rgba(255,210,80,.55),
+               0 16px 30px rgba(255,120,0,.5);
+  }
+  .chancefx{
+    position:fixed;left:50%;top:40%;z-index:97;pointer-events:none;
+    transform:translate(-50%,-50%) scale(.2);opacity:0;white-space:nowrap;
+    font-family:"Reggae One",cursive;font-size:clamp(30px,11vw,60px);
+    color:#fff;-webkit-text-stroke:2px rgba(0,0,0,.28);
+    text-shadow:0 0 16px rgba(255,200,80,.9),0 6px 0 rgba(0,0,0,.22);
+    padding:14px 40px;border-radius:8px;border:4px solid rgba(255,255,255,.92);
+    animation:rbanner 2.05s cubic-bezier(.2,1.6,.3,1) forwards;
+  }
+  .chancefx .cfbg{position:absolute;inset:0;z-index:-1;border-radius:4px;opacity:.95}
+  .chancefx.enter .cfbg{
+    background:linear-gradient(90deg,#ff2d6f,#ff8a00,#ffd23f,#ff2d6f);
+    background-size:300% 100%;animation:holo 1s linear infinite;
+  }
+  .chancefx.cont .cfbg{background:linear-gradient(135deg,#ff7a00,#b3001b)}
+  .chancefx.end{font-size:clamp(24px,8vw,44px);color:#ffe7c2}
+  .chancefx.end .cfbg{background:linear-gradient(135deg,#5a5a5a,#222)}
+
   @media (prefers-reduced-motion:reduce){
-    .bigcap,.aura,.rays,.spark,.r4 .bigcap .ch,.kaboom{animation:none}
-    .shock,.rbanner,.coin,.cutin,.heat{display:none}
+    .bigcap,.aura,.rays,.spark,.r4 .bigcap .ch,.kaboom,.chancebar{animation:none}
+    .shock,.rbanner,.coin,.cutin,.heat,.chancefx{display:none}
   }
 
   /* ---- alcohol on/off toggle ---- */
@@ -636,6 +674,7 @@
         <span class="ecells" id="ecells"></span>
         <span class="ecount" id="ecount">0/10</span>
       </div>
+      <div class="chancebar" id="chanceWrap" hidden></div>
       <div class="setrow">
         <span class="set-lab">未開封ロック</span>
         <div class="seg" id="cfSeg">
@@ -1003,12 +1042,23 @@ let confirmThreshold=4; // このレア度(lvl)以上で開封必須（未開封
 let mustOpen=false;        // 未開封ロック中フラグ
 const ENERGY_MAX=10;
 
+// ===== パチンコ風 チャンスモード（確変ST RUSH）=====
+let chanceMode=false;        // チャンスモード突入中か
+let chanceLeft=0;            // ST残り（この回数“ハズレ継続”したら転落）
+let chanceStreak=0;          // 連チャン数
+const CHANCE_TRIGGER_LVL=3;  // RR以上を引いたら突入
+const ST_SPINS=8;            // ST回数（残り0で転落）
+const P_HIT=0.14;            // 1スピンの継続抽選確率（ST8回で実質継続率≈70%）。SRは継続確定
+const MAX_STREAK=50;         // 安全上限
+
 // 予算ガチャ：¥1,000〜¥5,000を100円刻みで、高額ほど指数的に出にくくする
 function rollBudget(){
   const steps=[];
   let weights=[], sum=0;
   for(let b=1000;b<=5000;b+=100){
-    const w=Math.exp(-(b-1000)/850); // 減衰スケール（小さいほど低予算に偏る）
+    const w = chanceMode
+      ? Math.exp((b-1000)/1200)        // チャンス中：高予算（高レア）に大きく偏る
+      : Math.exp(-(b-1000)/850);       // 通常：低予算に偏る
     steps.push(b); weights.push(w); sum+=w;
   }
   let r=Math.random()*sum;
@@ -1093,6 +1143,69 @@ function renderEnergy(){
   document.getElementById('energyWrap').classList.toggle('full',full);
 }
 
+// チャンスモードのバッジ描画
+function renderChance(){
+  const w=document.getElementById('chanceWrap');
+  if(!w) return;
+  const m=document.getElementById('machine');
+  if(m) m.classList.toggle('chance',chanceMode);
+  if(chanceMode){
+    w.hidden=false;
+    w.innerHTML=`<span class="cm-ic">🔥</span><span class="cm-t">CHANCE MODE</span>`
+      +`<span class="cm-st">残り${chanceLeft}</span>`
+      +`<span class="cm-rn">${chanceStreak}連</span>`;
+  }else{
+    w.hidden=true; w.innerHTML='';
+  }
+}
+
+// 1スピン分の結果レア度を受け取り、突入/継続/転落を判定
+function chanceAfter(lvl){
+  if(!chanceMode){
+    if(lvl>=CHANCE_TRIGGER_LVL){
+      chanceMode=true; chanceStreak=1; chanceLeft=ST_SPINS;
+      renderChance(); chanceFx('enter',1);
+    }
+    return;
+  }
+  // チャンス中：この回が継続抽選に当たれば連チャン（SRは継続確定）。
+  // 外れたらST残りを1消費し、0で転落。
+  const cont=(chanceStreak<MAX_STREAK) && (lvl>=4 || Math.random()<P_HIT);
+  if(cont){
+    chanceStreak++; chanceLeft=ST_SPINS;
+    renderChance(); chanceFx('cont',chanceStreak);
+  }else{
+    chanceLeft--;
+    if(chanceLeft<=0){
+      const fin=chanceStreak;
+      chanceMode=false; chanceLeft=0; chanceStreak=0;
+      renderChance(); chanceFx('end',fin);
+    }else{
+      renderChance();
+    }
+  }
+}
+
+// チャンスモード演出（突入／継続／終了）
+function chanceFx(kind,streak){
+  const map={
+    enter:{cls:'enter',txt:'🔥 CHANCE 突入！🔥'},
+    cont :{cls:'cont', txt:streak+'連 継続！！'},
+    end  :{cls:'end',  txt:'CHANCE 終了 ／ '+streak+'連'}
+  };
+  const m=map[kind]; if(!m) return;
+  const el=document.createElement('div');
+  el.className='chancefx '+m.cls;
+  el.innerHTML='<span class="cfbg"></span>'+m.txt;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), kind==='end'?1950:2150);
+  if(kind!=='end'){
+    heatFlash(true);
+    confettiBurst(kind==='enter'?120:70,true);
+    if(kind==='enter') coinRain(24);
+  }
+}
+
 // レバーを回した後：レア度に応じたカプセルが排出口に出てくる
 function dispenseCapsule(){
   pendingResult=computeResult();
@@ -1161,6 +1274,7 @@ function openCapsule(){
     history.unshift({single:true,result:r});
     if(history.length>6) history.pop();
     renderHist();
+    setTimeout(()=>chanceAfter(rare.lvl),360);
   },430);
 }
 
@@ -1330,7 +1444,7 @@ function openTen(){
     setTimeout(()=>el.classList.add('opening'),i*45);
   });
   celebrate(mr,1.4);
-  setTimeout(()=>{ render10(list); recordTen(list); },620);
+  setTimeout(()=>{ render10(list); recordTen(list); setTimeout(()=>chanceAfter(mr.lvl),420); },620);
 }
 
 // 10連の結果を履歴に1件として保存
@@ -1898,6 +2012,7 @@ function renderRates(){
 applyStore(currentStore);
 renderRates();
 renderEnergy();
+renderChance();
 
 </script>
 </body>
