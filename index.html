@@ -575,6 +575,39 @@
   .alctog[aria-checked="true"] .al-knob{left:14px}
   .alctog:active{transform:scale(.99)}
 
+  /* ---- sound (mute + volume) ---- */
+  .sndrow{gap:10px}
+  .sndmute{
+    flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    border:0;background:none;font-family:inherit;color:#ffe07a;font-weight:900;
+    font-size:12px;line-height:1;padding:2px 2px;
+  }
+  .sndmute .snd-ic{font-size:16px;line-height:1;display:inline-block;width:18px;text-align:center}
+  .sndmute[aria-checked="true"] .snd-lab{opacity:.55;text-decoration:line-through}
+  .sndmute[aria-checked="true"] .snd-ic{filter:grayscale(1) brightness(.8)}
+  .sndmute:active{transform:scale(.97)}
+  .sndvol{
+    -webkit-appearance:none;appearance:none;flex:1;height:14px;background:transparent;cursor:pointer;
+  }
+  .sndvol::-webkit-slider-runnable-track{
+    height:6px;border-radius:99px;background:rgba(0,0,0,.35);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.5);
+  }
+  .sndvol::-moz-range-track{
+    height:6px;border-radius:99px;background:rgba(0,0,0,.35);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.5);
+  }
+  .sndvol::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;
+    background:var(--oro);border:2px solid #3a1500;margin-top:-7px;
+    box-shadow:0 1px 2px rgba(0,0,0,.5);
+  }
+  .sndvol::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:var(--oro);
+    border:2px solid #3a1500;box-shadow:0 1px 2px rgba(0,0,0,.5);
+  }
+  .sndvol:disabled{opacity:.45;cursor:not-allowed}
+
   /* ---- gachapon front panel ---- */
   .panel{
     position:relative;z-index:1;margin-top:11px;
@@ -755,6 +788,13 @@
           <button class="seg-b" data-th="3">RR↑</button>
           <button class="seg-b on" data-th="4">SR</button>
         </div>
+      </div>
+      <div class="setrow sndrow">
+        <button class="sndmute" id="sndMute" role="switch" aria-checked="false" aria-label="音をミュート">
+          <span class="snd-ic" id="sndIc">🔊</span>
+          <span class="snd-lab">サウンド</span>
+        </button>
+        <input class="sndvol" id="sndVol" type="range" min="0" max="100" step="1" value="80" aria-label="音量">
       </div>
       <div class="actionrow">
         <button class="alctog" id="alctog" role="switch" aria-checked="true" aria-label="アルコールあり/なし切替">
@@ -1145,6 +1185,12 @@ let history=[];
 let energy=0;            // 0〜10。10でフル→次回10連
 let alcoholOn=true;      // アルコール込み/抜き切り替え
 let confirmThreshold=4; // このレア度(lvl)以上で開封必須（未開封ロック）。nullでオフ。初期値はSR
+// サウンド設定（localStorage に保存）
+let soundMuted=false, soundVolume=0.8;
+try{
+  const sv=localStorage.getItem('mg.snd.vol'); if(sv!=null){ const n=parseFloat(sv); if(isFinite(n)) soundVolume=Math.min(1,Math.max(0,n)); }
+  const sm=localStorage.getItem('mg.snd.mute'); if(sm!=null) soundMuted=(sm==='1');
+}catch(e){}
 let mustOpen=false;        // 未開封ロック中フラグ
 const ENERGY_MAX=10;
 
@@ -1765,8 +1811,22 @@ function renderHist(){
 const machine=document.getElementById('machine');
 
 /* ---- 効果音（Web Audio で「ガラガラ」を合成）---- */
-let actx;
-function AC(){ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); return actx; }
+let actx, masterGain;
+function AC(){
+  if(!actx){
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    masterGain = actx.createGain();
+    masterGain.gain.value = soundMuted ? 0 : soundVolume;
+    masterGain.connect(actx.destination);
+  }
+  return actx;
+}
+function masterOut(ctx){ return masterGain || ctx.destination; }
+function applyMasterVolume(){
+  if(!masterGain || !actx) return;
+  const v = soundMuted ? 0 : soundVolume;
+  masterGain.gain.setTargetAtTime(v, actx.currentTime, 0.01);
+}
 
 function noiseBuffer(ctx,dur){
   const len=Math.floor(ctx.sampleRate*dur);
@@ -1788,7 +1848,7 @@ function rattleHit(ctx,t,gain){
   g.gain.setValueAtTime(0,t);
   g.gain.linearRampToValueAtTime(gain,t+0.004);
   g.gain.exponentialRampToValueAtTime(0.0008,t+0.07);
-  src.connect(bp).connect(g).connect(ctx.destination);
+  src.connect(bp).connect(g).connect(masterOut(ctx));
   src.start(t); src.stop(t+0.1);
 }
 
@@ -1807,7 +1867,7 @@ function crankRumble(ctx,t0,dur){
   const lg=ctx.createGain(); lg.gain.value=0.09;
   lfo.connect(lg).connect(g.gain);
   g.gain.linearRampToValueAtTime(0.0001,t0+dur);
-  src.connect(lp).connect(g).connect(ctx.destination);
+  src.connect(lp).connect(g).connect(masterOut(ctx));
   src.start(t0); src.stop(t0+dur);
   lfo.start(t0); lfo.stop(t0+dur);
 }
@@ -1822,7 +1882,7 @@ function dropChime(ctx,t){
   g.gain.setValueAtTime(0.0001,t);
   g.gain.linearRampToValueAtTime(0.22,t+0.02);
   g.gain.exponentialRampToValueAtTime(0.0008,t+0.4);
-  o.connect(g).connect(ctx.destination);
+  o.connect(g).connect(masterOut(ctx));
   o.start(t); o.stop(t+0.42);
 }
 
@@ -1835,7 +1895,7 @@ function dispenseSound(ctx,t,lvl){
     g.gain.setValueAtTime(0.0001,t0);
     g.gain.linearRampToValueAtTime(vol,t0+0.015);
     g.gain.exponentialRampToValueAtTime(0.0006,t0+dur);
-    o.connect(g).connect(ctx.destination);
+    o.connect(g).connect(masterOut(ctx));
     o.start(t0); o.stop(t0+dur+0.02);
   };
   if(lvl===0){            // C：素朴な「ことん」
@@ -1856,7 +1916,7 @@ function dispenseSound(ctx,t,lvl){
     g.gain.setValueAtTime(0.0001,t);
     g.gain.linearRampToValueAtTime(0.2,t+0.02);
     g.gain.exponentialRampToValueAtTime(0.0006,t+0.42);
-    o.connect(g).connect(ctx.destination);
+    o.connect(g).connect(masterOut(ctx));
     o.start(t); o.stop(t+0.46);
     [1568,2093,2637,3136].forEach((f,i)=>tone(f,t+0.30+i*0.06,0.5,0.09,'sine'));
   }
@@ -1872,7 +1932,7 @@ function buttonClick(ctx,t){
   g.gain.setValueAtTime(0.0001,t);
   g.gain.linearRampToValueAtTime(0.2,t+0.006);
   g.gain.exponentialRampToValueAtTime(0.0006,t+0.11);
-  o.connect(g).connect(ctx.destination);
+  o.connect(g).connect(masterOut(ctx));
   o.start(t); o.stop(t+0.12);
   // 短いクリックノイズを重ねて打鍵感を強調
   const s=ctx.createBufferSource();
@@ -1881,7 +1941,7 @@ function buttonClick(ctx,t){
   const ng=ctx.createGain();
   ng.gain.setValueAtTime(0.18,t);
   ng.gain.exponentialRampToValueAtTime(0.0006,t+0.04);
-  s.connect(hp).connect(ng).connect(ctx.destination);
+  s.connect(hp).connect(ng).connect(masterOut(ctx));
   s.start(t); s.stop(t+0.05);
 }
 
@@ -1894,7 +1954,7 @@ function popOpen(ctx,t){
   const cg=ctx.createGain();
   cg.gain.setValueAtTime(0.5,t);
   cg.gain.exponentialRampToValueAtTime(0.0006,t+0.022);
-  crack.connect(hp).connect(cg).connect(ctx.destination);
+  crack.connect(hp).connect(cg).connect(masterOut(ctx));
   crack.start(t); crack.stop(t+0.04);
 
   // 2) ポクッ：中空プラスチックの胴鳴り（速い減衰＋わずかなピッチ下降）
@@ -1906,7 +1966,7 @@ function popOpen(ctx,t){
   bg.gain.setValueAtTime(0.0001,t+0.004);
   bg.gain.linearRampToValueAtTime(0.34,t+0.012);
   bg.gain.exponentialRampToValueAtTime(0.0006,t+0.14);
-  body.connect(bg).connect(ctx.destination);
+  body.connect(bg).connect(masterOut(ctx));
   body.start(t+0.004); body.stop(t+0.16);
 
   // 3) もう片方の殻が「カッ」と弾ける小クリック
@@ -1916,7 +1976,7 @@ function popOpen(ctx,t){
   const kg=ctx.createGain();
   kg.gain.setValueAtTime(0.28,t2);
   kg.gain.exponentialRampToValueAtTime(0.0006,t2+0.03);
-  click.connect(bp).connect(kg).connect(ctx.destination);
+  click.connect(bp).connect(kg).connect(masterOut(ctx));
   click.start(t2); click.stop(t2+0.04);
 }
 
@@ -1934,7 +1994,7 @@ function fanfare(ctx,t,lvl){
     g.gain.setValueAtTime(0.0001,dt);
     g.gain.linearRampToValueAtTime(lvl>=4?0.16:0.11,dt+0.02);
     g.gain.exponentialRampToValueAtTime(0.0006,dt+0.5);
-    o.connect(g).connect(ctx.destination);
+    o.connect(g).connect(masterOut(ctx));
     o.start(dt); o.stop(dt+0.55);
   });
   if(lvl>=4){ // 最後にキラキラ余韻
@@ -1945,7 +2005,7 @@ function fanfare(ctx,t,lvl){
       g.gain.setValueAtTime(0.0001,dt);
       g.gain.linearRampToValueAtTime(0.09,dt+0.02);
       g.gain.exponentialRampToValueAtTime(0.0005,dt+0.6);
-      o.connect(g).connect(ctx.destination);
+      o.connect(g).connect(masterOut(ctx));
       o.start(dt); o.stop(dt+0.65);
     });
   }
@@ -1980,7 +2040,7 @@ function playGachaBig(durationMs){
   sg.gain.setValueAtTime(0.0001,t0);
   sg.gain.linearRampToValueAtTime(0.12,t0+0.05);
   sg.gain.exponentialRampToValueAtTime(0.0006,t0+sec);
-  sub.connect(sg).connect(ctx.destination);
+  sub.connect(sg).connect(masterOut(ctx));
   sub.start(t0); sub.stop(t0+sec);
   // 密度の高いカラカラ（単発より速く強く）
   let t=t0+0.02;
@@ -1996,7 +2056,7 @@ function playGachaBig(durationMs){
   swg.gain.setValueAtTime(0.0001,t0+sec*0.55);
   swg.gain.linearRampToValueAtTime(0.16,t0+sec-0.04);
   swg.gain.exponentialRampToValueAtTime(0.0006,t0+sec+0.05);
-  sweep.connect(swg).connect(ctx.destination);
+  sweep.connect(swg).connect(masterOut(ctx));
   sweep.start(t0+sec*0.55); sweep.stop(t0+sec+0.06);
 }
 
@@ -2014,7 +2074,7 @@ function popOpenMulti(ctx,t,n){
   g.gain.setValueAtTime(0.0001,tEnd);
   g.gain.linearRampToValueAtTime(0.34,tEnd+0.012);
   g.gain.exponentialRampToValueAtTime(0.0006,tEnd+0.22);
-  o.connect(g).connect(ctx.destination);
+  o.connect(g).connect(masterOut(ctx));
   o.start(tEnd); o.stop(tEnd+0.24);
 }
 
@@ -2167,6 +2227,35 @@ alctog.addEventListener('click',()=>{
   alcoholOn=!alcoholOn;
   alctog.setAttribute('aria-checked',alcoholOn?'true':'false');
 });
+
+// サウンド：ミュート切替 / 音量スライダー
+const sndMute=document.getElementById('sndMute');
+const sndVol=document.getElementById('sndVol');
+const sndIc=document.getElementById('sndIc');
+function sndIcon(){
+  if(soundMuted||soundVolume<=0) return '🔇';
+  if(soundVolume<0.34) return '🔈';
+  if(soundVolume<0.7)  return '🔉';
+  return '🔊';
+}
+function renderSnd(){
+  sndMute.setAttribute('aria-checked',soundMuted?'true':'false');
+  sndVol.value=Math.round(soundVolume*100);
+  sndVol.disabled=soundMuted;
+  sndIc.textContent=sndIcon();
+}
+sndMute.addEventListener('click',()=>{
+  soundMuted=!soundMuted;
+  try{ localStorage.setItem('mg.snd.mute',soundMuted?'1':'0'); }catch(e){}
+  applyMasterVolume(); renderSnd();
+});
+sndVol.addEventListener('input',()=>{
+  soundVolume=Math.min(1,Math.max(0,(+sndVol.value||0)/100));
+  if(soundMuted && soundVolume>0){ soundMuted=false; try{localStorage.setItem('mg.snd.mute','0');}catch(e){} }
+  try{ localStorage.setItem('mg.snd.vol',String(soundVolume)); }catch(e){}
+  applyMasterVolume(); renderSnd();
+});
+renderSnd();
 
 // お店切り替え（サイゼリヤ / 餃子の王将）
 const storesw=document.getElementById('storesw');
