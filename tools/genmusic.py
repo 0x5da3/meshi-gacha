@@ -3,24 +3,40 @@
 # Composes richer per-store loops (saizeriya/ohsho/cocoichi x normal/RUSH) and
 # encodes them as compact mono MP3.
 #
-# Regenerate:
-#   pip install numpy lameenc
+# Regenerate (scipy gives a big speedup; multiprocessing renders the 6
+# tracks in parallel; both degrade gracefully if unavailable):
+#   pip install numpy scipy lameenc
 #   python3 tools/genmusic.py            # -> /tmp/bgm_assets.json
 # then replace the `const BGM_ASSETS={...};` literal in index.html with
 #   const BGM_ASSETS=<contents of /tmp/bgm_assets.json>;
 # The JS side (bgmRenderAsset) trims MP3 decoder delay by amplitude onset and
 # folds the reverb tail for a seamless loop, so loops MUST stay gap-free here.
+#
+# Composition aims for a Yoko Kanno flavor: rootless extended/altered jazz
+# voicings, ii-V-I turnarounds with tritone subs, walking bass with chromatic
+# approach tones, a harmonized countermelody, and a whole-step "chorus" key
+# lift on the RUSH variant.
 import json, base64, math, io
 import numpy as np
 import lameenc
+try:
+    from scipy.signal import lfilter as _lfilter
+    HAVE_SCIPY = True
+except Exception:
+    HAVE_SCIPY = False
 
 SR = 32000
 BASE = 261.63  # C4, matches app's BGM_BASE
 
 rng = np.random.default_rng(20260517)
 
-def hz(semi):           # semitone offset from C4
-    return BASE * (2.0 ** (semi / 12.0))
+# Yoko Kanno-ish "chorus lift": RUSH variant modulates up a whole step.
+# Every pitched voice routes through hz(), so one global transpose is enough
+# (drums use raw frequencies and are intentionally unaffected).
+_TP = 0
+
+def hz(semi):           # semitone offset from C4 (+ global key lift)
+    return BASE * (2.0 ** ((semi + _TP) / 12.0))
 
 def t_arr(dur):
     return np.arange(int(round(dur * SR))) / SR
@@ -90,42 +106,61 @@ def pluck(f, dur, amp=1.0, wave='saw', bright=0.6):
     env = np.exp(-tt * (5.5 - 3 * bright)) * (1 - np.exp(-tt * 300))
     return y * env * amp
 
+# --- fast IIR helpers (scipy lfilter when available, else pure-python) ---
+def _iir(b, a, x):
+    if HAVE_SCIPY:
+        return _lfilter(np.asarray(b, float), np.asarray(a, float), x)
+    b = list(b) + [0.0] * (3 - len(b))
+    a = list(a) + [0.0] * (3 - len(a))
+    y = np.empty_like(x); x1 = x2 = y1 = y2 = 0.0
+    for i in range(len(x)):
+        xi = x[i]
+        yi = b[0]*xi + b[1]*x1 + b[2]*x2 - a[1]*y1 - a[2]*y2
+        x2, x1 = x1, xi; y2, y1 = y1, yi; y[i] = yi
+    return y
+
+def _comb(x, d, g):                      # y[n] = x[n] + g*y[n-d]
+    if HAVE_SCIPY:
+        a = np.zeros(d + 1); a[0] = 1.0; a[-1] = -g
+        return _lfilter(np.array([1.0]), a, x)
+    y = np.empty_like(x); buf = np.zeros(d)
+    for i in range(len(x)):
+        j = i % d; v = x[i] + buf[j] * g; buf[j] = v; y[i] = v
+    return y
+
 def onepole_lp_var(x, fc):
     fc = np.clip(fc, 30, SR * 0.45)
-    a = 1 - np.exp(-2 * np.pi * fc / SR)
-    y = np.empty_like(x); acc = 0.0
-    av = a if np.isscalar(a) else a
-    for i in range(len(x)):
-        acc += (av[i] if not np.isscalar(av) else av) * (x[i] - acc)
-        y[i] = acc
+    if np.isscalar(fc):
+        a = 1 - np.exp(-2 * np.pi * fc / SR)
+        return _iir([a], [1.0, -(1 - a)], x)
+    if not HAVE_SCIPY:
+        av = 1 - np.exp(-2 * np.pi * fc / SR)
+        y = np.empty_like(x); acc = 0.0
+        for i in range(len(x)):
+            acc += av[i] * (x[i] - acc); y[i] = acc
+        return y
+    # block-wise constant cutoff (avg per block) via stateful lfilter — fast
+    n = len(x); blk = 256; y = np.empty(n); zi = np.zeros(1)
+    for s in range(0, n, blk):
+        e = min(n, s + blk)
+        fcm = float(np.mean(fc[s:e])); a = 1 - np.exp(-2 * np.pi * fcm / SR)
+        seg, zi = _lfilter([a], [1.0, -(1 - a)], x[s:e], zi=zi)
+        y[s:e] = seg
     return y
 
 def lp_static(x, fc, q=0.7):
-    # biquad lowpass
     w0 = 2 * np.pi * fc / SR
     al = math.sin(w0) / (2 * q)
     b0 = (1 - math.cos(w0)) / 2; b1 = 1 - math.cos(w0); b2 = b0
     a0 = 1 + al; a1 = -2 * math.cos(w0); a2 = 1 - al
-    b0, b1, b2, a1, a2 = b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0
-    y = np.empty_like(x); x1 = x2 = y1 = y2 = 0.0
-    for i in range(len(x)):
-        xi = x[i]
-        yi = b0 * xi + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
-        x2, x1 = x1, xi; y2, y1 = y1, yi; y[i] = yi
-    return y
+    return _iir([b0/a0, b1/a0, b2/a0], [1.0, a1/a0, a2/a0], x)
 
 def hp_static(x, fc):
     w0 = 2 * np.pi * fc / SR
     al = math.sin(w0) / (2 * 0.707)
     b0 = (1 + math.cos(w0)) / 2; b1 = -(1 + math.cos(w0)); b2 = b0
     a0 = 1 + al; a1 = -2 * math.cos(w0); a2 = 1 - al
-    b0, b1, b2, a1, a2 = b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0
-    y = np.empty_like(x); x1 = x2 = y1 = y2 = 0.0
-    for i in range(len(x)):
-        xi = x[i]
-        yi = b0 * xi + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
-        x2, x1 = x1, xi; y2, y1 = y1, yi; y[i] = yi
-    return y
+    return _iir([b0/a0, b1/a0, b2/a0], [1.0, a1/a0, a2/a0], x)
 
 def noise(dur):
     return rng.standard_normal(int(round(dur * SR)))
@@ -185,40 +220,31 @@ def tabla(f=180, dur=0.22, amp=1.0):
 
 # ---- effects ----
 def delay(x, dt, fb, mix):
-    d = int(dt * SR); y = x.copy()
-    buf = np.zeros(len(x) + d)
-    buf[:len(x)] = x
-    out = np.zeros(len(x))
-    dl = np.zeros(d)
-    for i in range(len(x)):
-        dv = dl[i % d]
-        o = x[i] + dv
-        dl[i % d] = x[i] + dv * fb
-        out[i] = o
+    d = max(1, int(dt * SR))
+    a = np.zeros(d + 1); a[0] = 1.0; a[-1] = -fb       # u[n]=x[n]+fb*u[n-d]
+    u = _iir([1.0], a, x) if HAVE_SCIPY else _comb(x, d, fb)
+    sd = np.concatenate([np.zeros(d), u[:-d]]) if d < len(u) else np.zeros_like(x)
+    out = x + sd
     return x * (1 - mix) + out * mix
 
 def reverb(x, mix=0.16, decay=0.4):
     combs = [(0.0297, 0.78), (0.0371, 0.74), (0.0411, 0.70), (0.0437, 0.68)]
     out = np.zeros(len(x))
     for dt, g in combs:
-        d = int(dt * SR); buf = np.zeros(d); acc = np.zeros(len(x))
-        gg = g * (0.6 + decay)
-        gg = min(0.92, gg)
-        for i in range(len(x)):
-            j = i % d
-            v = x[i] + buf[j] * gg
-            buf[j] = v
-            acc[i] = v
-        out += acc
+        d = max(1, int(dt * SR)); gg = min(0.92, g * (0.6 + decay))
+        out += _comb(x, d, gg)
     out /= len(combs)
-    # one allpass for diffusion
-    d = int(0.005 * SR); buf = np.zeros(d); ap = np.zeros(len(x)); g = 0.5
-    for i in range(len(x)):
-        j = i % d
-        bv = buf[j]
-        v = -g * out[i] + bv
-        buf[j] = out[i] + g * v
-        ap[i] = v
+    # one Schroeder allpass for diffusion: H = (-g + z^-d)/(1 - g z^-d)
+    d = max(1, int(0.005 * SR)); g = 0.5
+    if HAVE_SCIPY:
+        b = np.zeros(d + 1); b[0] = -g; b[-1] = 1.0
+        a = np.zeros(d + 1); a[0] = 1.0; a[-1] = -g
+        ap = _lfilter(b, a, out)
+    else:
+        buf = np.zeros(d); ap = np.zeros(len(out))
+        for i in range(len(out)):
+            j = i % d; bv = buf[j]; v = -g * out[i] + bv
+            buf[j] = out[i] + g * v; ap[i] = v
     return x * (1 - mix) + ap * mix
 
 def soft_limit(x, drive=1.0):
@@ -270,6 +296,40 @@ def melody(scale, bars, beats, sd, lo, hi, seed, density=0.62, octave=0):
             i += 1
     return notes
 
+# Kanno-ish harmonized countermelody: shadow the lead a diatonic 3rd/6th
+# below, snapped into the scale (sweet, vocal-like inner voice).
+def counter(notes, scale, drop=2):
+    sd = set(s % 12 for s in scale)
+    out = []
+    for (st, dn, semi) in notes:
+        deg = 0
+        c = semi
+        while deg < drop:
+            c -= 1
+            if c % 12 in sd:
+                deg += 1
+        out.append((st, dn, c))
+    return out
+
+# Jazz walking bass: target each bar root, approach the next with a
+# diatonic-or-chromatic leading tone on beat 4 (Kanno-flavored motion).
+def walk_bass(roots, scale, bars, beats):
+    sd = sorted(set(s % 12 for s in scale))
+    seq = []
+    for b in range(bars):
+        r0 = roots[b % len(roots)]
+        r1 = roots[(b + 1) % len(roots)]
+        for beat in range(beats):
+            if beat == 0:
+                n = r0
+            elif beat == beats - 1:
+                n = r1 - 1 if (r1 - r0) > 0 else r1 + 1   # chromatic approach
+            else:
+                step = sorted(sd)[(beat * 2) % len(sd)]
+                n = r0 + step + (0 if beat < beats / 2 else -12 + 12)
+            seq.append((b, beat, n))
+    return seq
+
 STORES = {}
 
 # ---------- SAIZERIYA: jazzy cafe / bossa ----------
@@ -283,16 +343,18 @@ def build_saizeriya(rush):
     tail = 1.6
     buf = np.zeros(int((loop + tail) * SR))
     drum = np.zeros_like(buf)
-    # Cmaj9 / Am9 / Dm9 / G13  (semitone voicings rel C4)
+    global _TP
+    _TP = 2 if rush else 0                      # RUSH: whole-step chorus lift
+    # Kanno-ish ii-V-I turnaround: Cmaj9 / Am9 / Dm9 / Db13(#11) tritone sub
     voic = [
         [-12, 0, 4, 7, 11, 14],   # Cmaj9
         [-15, -3, 0, 4, 7, 12],   # Am9
         [-10, -3, 2, 5, 9, 12],   # Dm9
-        [-17, -1, 2, 5, 9, 11],   # G13(ish)
+        [-23, 1, 5, 8, 11, 15],   # Db13(#11) <- tritone sub of G7
     ]
     roots = [-24, -27, -22, -29]
-    fifth = [7, 7, 7, 7]
     scale = [0, 2, 4, 5, 7, 9, 11]  # C major
+    wb_seq = walk_bass(roots, scale, bars, beats)
     swing = 0.12 if not rush else 0.06
 
     for b in range(bars):
@@ -313,20 +375,20 @@ def build_saizeriya(rush):
             mix_into(padsig, s)
         env = adsr(len(padsig), 0.25, 0.3, 0.85, 0.4, 0.8)
         add(buf, lp_static(padsig * env, 1600) * 0.05, bt)
-        # upright bossa bass: root / fifth with passing notes
-        bpat = [(0, roots[b % 4]), (3, roots[b % 4]),
-                (6, roots[b % 4] + fifth[b % 4]), (8, roots[b % 4]),
-                (11, roots[b % 4] + 3), (14, roots[(b + 1) % 4])]
-        for st, semi in bpat:
-            at = bt + st * sd
-            bs = osc('triangle', hz(semi), 0.42) * 0.7 + osc('sine', hz(semi - 12), 0.42) * 0.5
+        # Kanno-style walking upright bass: quarter notes, chromatic approach
+        for (wb, beat, semi) in wb_seq:
+            if wb != b:
+                continue
+            at = bt + beat * spb
+            bs = osc('triangle', hz(semi), spb * 0.95) * 0.7 + osc('sine', hz(semi - 12), spb * 0.95) * 0.5
             bs = lp_static(bs, 900)
-            bs *= adsr(len(bs), 0.006, 0.12, 0.5, 0.12, 0.5)
-            add(buf, bs * 0.42, at)
-    # lead melody
-    for (st, dn, semi) in melody(scale, bars, beats, sd, 0, 2, 41 + rush,
-                                 density=0.5 if not rush else 0.62,
-                                 octave=1 if rush else 0):
+            bs *= adsr(len(bs), 0.006, 0.12, 0.55, 0.1, 0.55)
+            add(buf, bs * 0.4, at)
+    # lead melody + harmonized countermelody (Kanno-ish sweet inner voice)
+    mel = melody(scale, bars, beats, sd, 0, 2, 41 + rush,
+                 density=0.5 if not rush else 0.62,
+                 octave=1 if rush else 0)
+    for (st, dn, semi) in mel:
         at = st * sd + (swing * sd if st % 2 else 0)
         dur = dn * sd * 0.95
         sig = osc('triangle', hz(semi), dur) * 0.6 + osc('sine', hz(semi), dur) * 0.4
@@ -334,6 +396,12 @@ def build_saizeriya(rush):
         sig = sig * vib
         sig *= adsr(len(sig), 0.02, 0.08, 0.7, 0.12, 0.7)
         add(buf, sig * 0.13, at)
+    for (st, dn, semi) in counter(mel, scale, drop=2):
+        at = st * sd + (swing * sd if st % 2 else 0)
+        dur = dn * sd * 0.9
+        cs = osc('sine', hz(semi), dur) * 0.6 + osc('triangle', hz(semi), dur) * 0.4
+        cs *= adsr(len(cs), 0.03, 0.1, 0.6, 0.14, 0.6)
+        add(buf, cs * 0.055, at)
     # drums: soft kick, brush snare backbeat, shaker 8ths, rim
     for b in range(bars):
         bt = b * beats * spb
@@ -365,6 +433,8 @@ def build_ohsho(rush):
     tail = 1.2
     buf = np.zeros(int((loop + tail) * SR))
     drum = np.zeros_like(buf)
+    global _TP
+    _TP = 2 if rush else 0                      # RUSH: whole-step chorus lift
     # C  F  G  C  (funk), pentatonic flavor
     chords = [[0, 4, 7, 14], [-7, 5, 9, 12], [-5, 7, 11, 14], [0, 4, 7, 12]]
     roots = [-24, -19, -17, -24]
@@ -401,10 +471,11 @@ def build_ohsho(rush):
             semi = penta[(b + k) % len(penta)] + 12
             add(buf, pluck(hz(semi), 0.5, amp=0.07, wave='triangle', bright=0.7),
                 bt + st * sd)
-    # bright pentatonic lead riff
-    for (st, dn, semi) in melody(penta, bars, beats, sd, 1, 2, 77 + rush,
-                                 density=0.66 if not rush else 0.78,
-                                 octave=1 if rush else 0):
+    # bright pentatonic lead riff + brass-ish countermelody (Kanno inner voice)
+    mel = melody(penta, bars, beats, sd, 1, 2, 77 + rush,
+                 density=0.66 if not rush else 0.78,
+                 octave=1 if rush else 0)
+    for (st, dn, semi) in mel:
         at = st * sd
         dur = dn * sd * 0.9
         sig = osc('square', hz(semi), dur, detune=5) * 0.5
@@ -412,6 +483,13 @@ def build_ohsho(rush):
         sig = lp_static(sig, 4200, 1.1)
         sig *= adsr(len(sig), 0.006, 0.06, 0.6, 0.08, 0.6)
         add(buf, sig * 0.1, at)
+    for (st, dn, semi) in counter(mel, penta, drop=2):
+        at = st * sd
+        dur = dn * sd * 0.85
+        cs = osc('triangle', hz(semi), dur) * 0.6 + osc('square', hz(semi), dur, detune=4) * 0.25
+        cs = lp_static(cs, 3000, 0.9)
+        cs *= adsr(len(cs), 0.008, 0.06, 0.5, 0.08, 0.5)
+        add(buf, cs * 0.05, at)
     # punchy funk drums
     for b in range(bars):
         bt = b * beats * spb
@@ -445,6 +523,8 @@ def build_cocoichi(rush):
     tail = 1.8
     buf = np.zeros(int((loop + tail) * SR))
     drum = np.zeros_like(buf)
+    global _TP
+    _TP = 2 if rush else 0                      # RUSH: whole-step chorus lift
     # C phrygian: C Db Eb F G Ab Bb -> 0 1 3 5 7 8 10
     scale = [0, 1, 3, 5, 7, 8, 10]
     # tonic drone with bII / bVI color
@@ -474,9 +554,11 @@ def build_cocoichi(rush):
         ps *= adsr(len(ps), 0.4, 0.3, 0.7, 0.5, 0.7)
         add(buf, lp_static(ps, 2200) * 0.035, bt)
         # sitar-ish saw lead motif (phrygian), with bend on accents
+        motif = []
         for k, st in enumerate([0, 3, 6, 8, 11, 14]):
             deg = scale[(b * 2 + k) % len(scale)]
             semi = deg + (12 if not rush else 24)
+            motif.append((st, 3, semi))
             dur = sd * 3
             sig = osc('saw', hz(semi), dur)
             ttl = np.arange(len(sig)) / SR
@@ -485,6 +567,13 @@ def build_cocoichi(rush):
             sig = lp_static(sig, 2600, 1.4)
             sig *= adsr(len(sig), 0.01, 0.1, 0.5, 0.18, 0.55)
             add(buf, sig * 0.085, bt + st * sd)
+        # phrygian counter voice a diatonic 3rd below (hypnotic inner line)
+        for (st, dn, semi) in counter(motif, scale, drop=2):
+            dur = sd * dn
+            cs = osc('saw', hz(semi), dur) * 0.6 + osc('sine', hz(semi), dur) * 0.3
+            cs = lp_static(cs, 2000, 1.1)
+            cs *= adsr(len(cs), 0.02, 0.12, 0.45, 0.2, 0.5)
+            add(buf, cs * 0.045, bt + st * sd)
     # hypnotic hand percussion
     for b in range(bars):
         bt = b * beats * spb
@@ -530,26 +619,45 @@ def encode_mp3(samples, bitrate):
     data += enc.flush()
     return bytes(data)
 
+def _seed_for(store, rush):
+    off = {'saizeriya': 10, 'ohsho': 20, 'cocoichi': 30}[store]
+    return 20260517 + off + (1 if rush else 0)
+
+def _render_task(args):
+    store, rush = args
+    global rng
+    rng = np.random.default_rng(_seed_for(store, rush))   # per-track determinism
+    sig, loop, tail = BUILDERS[store](rush)
+    sig = soft_limit(sig, 1.05)
+    sig = normalize(sig, 0.9)
+    br = 80 if store != 'cocoichi' else 88
+    mp3 = encode_mp3(sig, br)
+    b64 = base64.b64encode(mp3).decode('ascii')
+    key = store + ('R' if rush else 'N')
+    stats = dict(key=key, dur=len(sig) / SR, loop=loop,
+                 mp3=len(mp3) / 1024, b64=len(b64) / 1024,
+                 peak=float(np.max(np.abs(sig))),
+                 rms=float(np.sqrt(np.mean(sig ** 2))),
+                 head=float(np.max(np.abs(sig[:int(0.01 * SR)]))))
+    return key, {'b64': b64, 'loop': round(loop, 4)}, stats
+
 def main():
+    tasks = [(s, r) for s in BUILDERS for r in (False, True)]
+    try:
+        import multiprocessing as mp
+        with mp.Pool(processes=min(len(tasks), mp.cpu_count() or 1)) as pool:
+            results = pool.map(_render_task, tasks)
+    except Exception as e:
+        print(f"(parallel render unavailable: {e}; running sequentially)")
+        results = [_render_task(t) for t in tasks]
     out = {}
     total = 0
-    for store, fn in BUILDERS.items():
-        for rush in (False, True):
-            sig, loop, tail = fn(rush)
-            sig = soft_limit(sig, 1.05)
-            sig = normalize(sig, 0.9)
-            br = 80 if store != 'cocoichi' else 88
-            mp3 = encode_mp3(sig, br)
-            b64 = base64.b64encode(mp3).decode('ascii')
-            key = store + ('R' if rush else 'N')
-            out[key] = {'b64': b64, 'loop': round(loop, 4)}
-            total += len(b64)
-            peak = float(np.max(np.abs(sig)))
-            rms = float(np.sqrt(np.mean(sig ** 2)))
-            head = float(np.max(np.abs(sig[:int(0.01 * SR)])))
-            print(f"{key:14s} dur={len(sig)/SR:5.2f}s loop={loop:5.2f}s "
-                  f"mp3={len(mp3)/1024:6.1f}KB b64={len(b64)/1024:6.1f}KB "
-                  f"peak={peak:.3f} rms={rms:.3f} head10ms={head:.3f}")
+    for key, rec, st in results:
+        out[key] = rec
+        total += len(rec['b64'])
+        print(f"{st['key']:14s} dur={st['dur']:5.2f}s loop={st['loop']:5.2f}s "
+              f"mp3={st['mp3']:6.1f}KB b64={st['b64']:6.1f}KB "
+              f"peak={st['peak']:.3f} rms={st['rms']:.3f} head10ms={st['head']:.3f}")
     print(f"--- total base64 ~ {total/1024:.1f} KB ---")
     with open('/tmp/bgm_assets.json', 'w') as f:
         json.dump(out, f)
