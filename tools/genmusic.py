@@ -165,6 +165,29 @@ def hp_static(x, fc):
 def noise(dur):
     return rng.standard_normal(int(round(dur * SR)))
 
+# Big-band brass stab: detuned saw stack -> lowpass, punchy ADSR.
+def brass(f, dur, amp=1.0, bright=1.0):
+    n = int(round(dur * SR)); tt = np.arange(n) / SR
+    y = (osc('saw', f, dur, detune=-7) + osc('saw', f, dur, detune=7)
+         + osc('saw', f, dur) * 0.7 + osc('square', f, dur, detune=3) * 0.4)
+    fc = f * (3 + 6 * bright) * np.exp(-tt * 9) + f * 1.6
+    y = onepole_lp_var(y, fc)
+    env = (1 - np.exp(-tt * 260)) * (0.35 + 0.65 * np.exp(-tt * 4.5))
+    return y * env * amp * 0.25
+
+# Warm string ensemble: stacked detuned saws + sub, slow bow, soft lowpass.
+def strings(f, dur, amp=1.0):
+    n = int(round(dur * SR)); tt = np.arange(n) / SR
+    y = np.zeros(n)
+    for det in (-9, -4, 4, 9):
+        y += osc('saw', f, dur, detune=det)
+    y += osc('saw', f / 2, dur) * 0.6
+    y = lp_static(y, 2400, 0.6)
+    bow = 1 + 0.006 * np.sin(2 * np.pi * 5.0 * tt)
+    env = np.minimum(1, tt / max(1e-4, dur * 0.28)) * np.minimum(1, (dur - tt) / max(1e-4, dur * 0.3) + 0.0001)
+    env = np.clip(env, 0, 1)
+    return y * bow * env * amp * 0.16
+
 # ---- drums ----
 def kick(dur=0.34, f0=150, f1=44, amp=1.0, click=0.5):
     n = int(round(dur * SR)); tt = np.arange(n) / SR
@@ -306,7 +329,6 @@ def melody(chord_bars, scale, bars, beats, sd, lo, hi, seed, density=0.62, octav
         [(0, 4), (4, 2), (6, 2), (8, 2), (10, 2), (12, 3), (15, 1)],
     ]
     base = CELLS[int(r.integers(len(CELLS)))]
-    apex_i = max(1, int(round(len(base) * 0.55)))
     ref = pool[len(pool) // 2]
     notes = []
     for b in range(bars):
@@ -319,6 +341,9 @@ def melody(chord_bars, scale, bars, beats, sd, lo, hi, seed, density=0.62, octav
         if stage == 2:  # development: rhythmic displacement (syncopate)
             cell = [((o + 1 if (k % 2 and o + 1 < bs) else o), d)
                     for k, (o, d) in enumerate(cell)]
+        # keep within the bar (meter-agnostic: works for 3/4 and 4/4)
+        cell = [(o, min(d, bs - o)) for (o, d) in cell if 0 <= o < bs and bs - o > 0]
+        apex_k = max(1, int(round(len(cell) * 0.55)))
         for k, (o, d) in enumerate(cell):
             st = b * bs + o
             strong = (o % 4 == 0)
@@ -327,7 +352,7 @@ def melody(chord_bars, scale, bars, beats, sd, lo, hi, seed, density=0.62, octav
                 d = max(1, d - 2)                          # end early -> rest
                 notes.append((st, d, p)); ref = p
                 break
-            if k == apex_i:                                # climactic staccato
+            if k == apex_k:                                # climactic staccato
                 lift = int(r.choice([4, 5, 7]))
                 if stage == 2:
                     lift += 3
@@ -409,181 +434,163 @@ STORES = {}
 
 # ---------- SAIZERIYA: jazzy cafe / bossa ----------
 def build_saizeriya(rush):
-    bpm = 132 if rush else 96
-    beats = 4
+    # SAIZERIYA: bittersweet cinematic waltz in 3/4 (full reimagining).
+    bpm = 178 if rush else 150
+    beats = 3                                   # 3/4 waltz
     bars = 4
     spb = 60.0 / bpm
     sd = spb / 4.0
     loop = bars * beats * spb
-    tail = 1.6
+    tail = 2.3
     buf = np.zeros(int((loop + tail) * SR))
     drum = np.zeros_like(buf)
     global _TP
-    _TP = 2 if rush else 0                      # RUSH: whole-step chorus lift
-    # Kanno-ish ii-V-I turnaround: Cmaj9 / Am9 / Dm9 / Db13(#11) tritone sub
+    _TP = 2 if rush else 0                      # RUSH: whole-step lift
+    # Am9 – Fmaj7(9) – Dm7 – E7(b9)  (i – VI – iv – V7b9): bittersweet Kanno
     voic = [
-        [-12, 0, 4, 7, 11, 14],   # Cmaj9
-        [-15, -3, 0, 4, 7, 12],   # Am9
-        [-10, -3, 2, 5, 9, 12],   # Dm9
-        [-23, 1, 5, 8, 11, 15],   # Db13(#11) <- tritone sub of G7
+        [-15, 0, 4, 7, 11],     # Am9   (A C E G B)
+        [-19, 0, 5, 9, 12],     # Fmaj7 (F C F A E)
+        [-22, 2, 5, 9, 12],     # Dm7   (D D F A C)
+        [-20, 4, 8, 11, 13],    # E7b9  (E G# D F)
     ]
-    roots = [-24, -27, -22, -29]
-    scale = [0, 2, 4, 5, 7, 9, 11]  # C major
-    wb_seq = walk_bass(roots, scale, bars, beats)
-    swing = 0.12 if not rush else 0.06
+    scale = [0, 2, 4, 5, 7, 8, 9, 11]           # A-minor + G# (harmonic color)
 
     for b in range(bars):
         bt = b * beats * spb
         ch = voic[b % 4]
-        # bossa e-piano comping: syncopated stabs
-        comp_steps = [0, 3, 6, 7, 10, 13] if not rush else [0, 2, 4, 6, 8, 10, 12, 14]
-        for st in comp_steps:
-            sw = swing * sd if (st % 2 == 1) else 0
-            at = bt + st * sd + sw
-            for k, semi in enumerate(ch[1:]):
-                add(buf, epiano(hz(semi), 0.55, amp=0.085 * (0.9 if k else 1.0)), at)
-        # warm pad
-        padsig = np.zeros(int(beats * spb * SR))
-        for semi in ch[1:5]:
-            s = osc('triangle', hz(semi), beats * spb) * 0.5
-            s += osc('sine', hz(semi - 12), beats * spb)[:len(s)] * 0.3
-            mix_into(padsig, s)
-        env = adsr(len(padsig), 0.25, 0.3, 0.85, 0.4, 0.8)
-        add(buf, lp_static(padsig * env, 1600) * 0.05, bt)
-        # Kanno-style walking upright bass: quarter notes, chromatic approach
-        for (wb, beat, semi) in wb_seq:
-            if wb != b:
-                continue
-            at = bt + beat * spb
-            bs = osc('triangle', hz(semi), spb * 0.95) * 0.7 + osc('sine', hz(semi - 12), spb * 0.95) * 0.5
-            bs = lp_static(bs, 900)
-            bs *= adsr(len(bs), 0.006, 0.12, 0.55, 0.1, 0.55)
-            add(buf, bs * 0.4, at)
-    # lead melody + harmonized countermelody (Kanno-ish sweet inner voice)
+        root = ch[0]
+        # lush string-ensemble pad holding the chord
+        for semi in ch[1:]:
+            add(buf, strings(hz(semi), beats * spb * 0.98, amp=0.5), bt + 0.01)
+        # waltz "oom-pah-pah": bass on beat1, Rhodes chord on beats 2 & 3
+        bs = osc('triangle', hz(root), spb * 0.9) * 0.8 + osc('sine', hz(root - 12), spb * 0.9) * 0.5
+        bs = lp_static(bs, 700)
+        bs *= adsr(len(bs), 0.006, 0.14, 0.4, 0.12, 0.45)
+        add(buf, bs * 0.42, bt)
+        for beat in (1, 2):
+            for k, semi in enumerate(ch[1:4]):
+                add(buf, epiano(hz(semi), spb * 0.8, amp=0.07 * (0.9 if k else 1.0)),
+                    bt + beat * spb)
+        # passing bass note leading into the next bar (beat 3)
+        nxt = voic[(b + 1) % 4][0]
+        pb = osc('triangle', hz(root + (1 if nxt > root else -1) + (0 if b % 2 else -0)), spb * 0.6)
+        pb = lp_static(pb, 700) * adsr(len(pb), 0.006, 0.1, 0.3, 0.08, 0.4)
+        add(buf, pb * 0.22, bt + 2 * spb)
+    # expressive lead — wide leaps, climactic-staccato, early resolution
     mel = melody(voic, scale, bars, beats, sd, 0, 2, 41 + rush,
-                 density=0.5 if not rush else 0.62,
+                 density=0.5 if not rush else 0.6,
                  octave=1 if rush else 0)
     for (st, dn, semi) in mel:
-        at = st * sd + (swing * sd if st % 2 else 0)
-        dur = dn * sd * 0.95
-        sig = osc('triangle', hz(semi), dur) * 0.6 + osc('sine', hz(semi), dur) * 0.4
-        vib = 1 + 0.004 * np.sin(2 * np.pi * 5.4 * np.arange(len(sig)) / SR)
+        at = st * sd
+        dur = dn * sd * 0.96
+        sig = osc('triangle', hz(semi), dur) * 0.55 + osc('sine', hz(semi), dur) * 0.45
+        tt = np.arange(len(sig)) / SR
+        vib = 1 + 0.006 * np.sin(2 * np.pi * 5.2 * tt) * np.minimum(1, tt * 4)
         sig = sig * vib
-        sig *= adsr(len(sig), 0.02, 0.08, 0.7, 0.12, 0.7)
-        add(buf, sig * 0.13, at)
+        sig *= adsr(len(sig), 0.03, 0.1, 0.72, 0.22, 0.7)
+        add(buf, sig * 0.135, at)
+    # cello-ish contrary counter line
     for (st, dn, semi) in counter(mel, voic, scale, beats, bars):
-        at = st * sd + (swing * sd if st % 2 else 0)
-        dur = dn * sd * 0.9
-        cs = osc('sine', hz(semi), dur) * 0.6 + osc('triangle', hz(semi), dur) * 0.4
-        cs *= adsr(len(cs), 0.03, 0.1, 0.6, 0.14, 0.6)
-        add(buf, cs * 0.055, at)
-    # drums: soft kick, brush snare backbeat, shaker 8ths, rim
+        at = st * sd
+        dur = dn * sd * 0.95
+        cs = osc('saw', hz(semi - 12), dur) * 0.45 + osc('sine', hz(semi - 12), dur) * 0.55
+        cs = lp_static(cs, 1300, 0.8)
+        cs *= adsr(len(cs), 0.04, 0.12, 0.6, 0.2, 0.6)
+        add(buf, cs * 0.06, at)
+    # intimate waltz brushes: soft kick on 1, brush taps on 2 & 3
     for b in range(bars):
         bt = b * beats * spb
-        for beat in range(beats):
-            at = bt + beat * spb
-            if beat in (0, 2) or rush:
-                add(drum, kick(0.3, 120, 42, amp=0.55, click=0.2), at)
-            if beat in (1, 3):
-                add(drum, snare(0.18, amp=0.32, soft=True), at)
-            for h in range(2):
-                add(drum, shaker(0.5), at + h * spb / 2 + (swing * sd if h else 0))
+        add(drum, kick(0.34, 105, 44, amp=0.4, click=0.08), bt)
+        for beat in (1, 2):
+            add(drum, snare(0.16, amp=0.16, soft=True), bt + beat * spb)
+            add(drum, shaker(0.34), bt + beat * spb)
         if rush:
-            add(drum, clap(0.3), bt + spb)
-            add(drum, clap(0.3), bt + 3 * spb)
+            add(drum, shaker(0.3), bt + 0.5 * spb)
+            add(drum, shaker(0.3), bt + 1.5 * spb)
     sig = buf + drum
-    sig = delay(sig, sd * (2 if rush else 3), 0.22 if rush else 0.28, 0.18)
-    sig = reverb(sig, mix=0.17, decay=0.45)
+    sig = delay(sig, sd * 3, 0.26, 0.16)
+    sig = reverb(sig, mix=0.26, decay=0.6)       # cinematic space
     return sig, loop, tail
 
 
-# ---------- OHSHO: bright chinese funk ----------
+# ---------- OHSHO: frantic minor big-band bebop (Tank!-flavored) ----------
 def build_ohsho(rush):
-    bpm = 168 if rush else 124
+    bpm = 212 if rush else 184
     beats = 4
     bars = 4
     spb = 60.0 / bpm
     sd = spb / 4.0
     loop = bars * beats * spb
-    tail = 1.2
+    tail = 1.5
     buf = np.zeros(int((loop + tail) * SR))
     drum = np.zeros_like(buf)
     global _TP
-    _TP = 2 if rush else 0                      # RUSH: whole-step chorus lift
-    # C  F  G  C  (funk), pentatonic flavor
-    chords = [[0, 4, 7, 14], [-7, 5, 9, 12], [-5, 7, 11, 14], [0, 4, 7, 12]]
-    roots = [-24, -19, -17, -24]
-    penta = [0, 2, 4, 7, 9]  # C major pentatonic
+    _TP = 2 if rush else 0                      # RUSH: whole-step lift
+    # Cm9 – Fm9 – Dm7b5 – G7(b9): minor ii-V-i bebop turnaround
+    chords = [
+        [-24, 0, 3, 7, 10, 14],   # Cm9
+        [-19, 3, 8, 12, 15],      # Fm9
+        [-22, 2, 5, 8, 12],       # Dm7b5
+        [-17, -1, 2, 5, 8],       # G7b9
+    ]
+    roots = [-24, -19, -22, -17]
+    scale = [0, 2, 3, 5, 6, 7, 10]              # C minor + Gb blue note
+    wb = walk_bass(roots, scale, bars, beats)
+    sw = 0.17 * sd                              # hard bebop swing on the &'s
 
+    # walking upright bass (swung quarters, chromatic approach)
+    for (bb, beat, semi) in wb:
+        at = bb * beats * spb + beat * spb
+        bs = osc('triangle', hz(semi), spb * 0.92) * 0.7 + osc('sine', hz(semi - 12), spb * 0.92) * 0.5
+        bs = lp_static(bs, 820)
+        bs *= adsr(len(bs), 0.006, 0.1, 0.55, 0.1, 0.55)
+        add(buf, bs * 0.4, at)
+    # big-band brass section: punchy syncopated shots
+    shots = [0, 3, 6, 10, 12, 14] if not rush else [0, 2, 3, 6, 8, 10, 12, 14]
     for b in range(bars):
         bt = b * beats * spb
         ch = chords[b % 4]
-        # funky 16th stabs (square synth)
-        stab = [0, 2, 5, 6, 8, 11, 13, 14] if not rush else list(range(0, 16, 2))
-        for st in stab:
-            if rng.random() < 0.85:
-                at = bt + st * sd
-                s = np.zeros(int(0.16 * SR))
-                for semi in ch:
-                    s += osc('square', hz(semi), 0.16, detune=6) * 0.25
-                    s += osc('square', hz(semi), 0.16, detune=-6) * 0.25
-                s = lp_static(s, 3200, 1.0)
-                s *= adsr(len(s), 0.004, 0.05, 0.3, 0.05, 0.3)
-                add(buf, s * 0.085, at)
-        # slap-ish funk bass
-        bpat = [0, 2, 3, 6, 8, 10, 11, 14]
-        for st in bpat:
-            at = bt + st * sd
-            semi = roots[b % 4] + (0 if st % 4 == 0 else rng.choice([0, 7, 5, 12]))
-            bs = osc('saw', hz(semi), 0.22)
-            tt = np.arange(len(bs)) / SR
-            fc = hz(semi) * 6 * np.exp(-tt * 22) + hz(semi) * 1.5
-            bs = onepole_lp_var(bs, fc)
-            bs *= adsr(len(bs), 0.004, 0.08, 0.35, 0.06, 0.35)
-            add(buf, bs * 0.42, at)
-        # koto-ish pluck arpeggio (pentatonic, bright)
-        for k, st in enumerate([0, 4, 8, 12]):
-            semi = penta[(b + k) % len(penta)] + 12
-            add(buf, pluck(hz(semi), 0.5, amp=0.07, wave='triangle', bright=0.7),
-                bt + st * sd)
-    # bright pentatonic lead riff + brass-ish countermelody (Kanno inner voice)
-    mel = melody(chords, penta, bars, beats, sd, 1, 2, 77 + rush,
-                 density=0.66 if not rush else 0.78,
-                 octave=1 if rush else 0)
+        for st in shots:
+            at = bt + st * sd + (sw if st % 2 else 0)
+            for k, semi in enumerate(ch[1:]):
+                add(buf, brass(hz(semi), 0.16 if st % 4 else 0.26,
+                               amp=0.07 * (1.0 if k == 0 else 0.8), bright=1.0), at)
+    # bebop lead: fast swung lines, chromatic leaps, climactic peaks
+    mel = melody(chords, scale, bars, beats, sd, 0, 2, 77 + rush,
+                 density=0.8, octave=1 if rush else 0)
     for (st, dn, semi) in mel:
-        at = st * sd
-        dur = dn * sd * 0.9
-        sig = osc('square', hz(semi), dur, detune=5) * 0.5
-        sig += osc('square', hz(semi), dur, detune=-5) * 0.5
-        sig = lp_static(sig, 4200, 1.1)
-        sig *= adsr(len(sig), 0.006, 0.06, 0.6, 0.08, 0.6)
-        add(buf, sig * 0.1, at)
-    for (st, dn, semi) in counter(mel, chords, penta, beats, bars):
-        at = st * sd
+        at = st * sd + (sw if st % 2 else 0)
         dur = dn * sd * 0.85
-        cs = osc('triangle', hz(semi), dur) * 0.6 + osc('square', hz(semi), dur, detune=4) * 0.25
-        cs = lp_static(cs, 3000, 0.9)
-        cs *= adsr(len(cs), 0.008, 0.06, 0.5, 0.08, 0.5)
-        add(buf, cs * 0.05, at)
-    # punchy funk drums
+        sig = brass(hz(semi), dur, amp=0.42, bright=1.1)
+        sig *= adsr(len(sig), 0.006, 0.05, 0.7, 0.07, 0.65)
+        add(buf, sig * 0.34, at)
+    # saxy contrary counter line
+    for (st, dn, semi) in counter(mel, chords, scale, beats, bars):
+        at = st * sd + (sw if st % 2 else 0)
+        dur = dn * sd * 0.8
+        cs = osc('saw', hz(semi), dur, detune=-5) * 0.5 + osc('saw', hz(semi), dur, detune=5) * 0.5
+        cs = lp_static(cs, 2600, 1.0)
+        cs *= adsr(len(cs), 0.01, 0.06, 0.5, 0.07, 0.5)
+        add(buf, cs * 0.055, at)
+    # swung jazz kit: ride pattern, snare comping, feathered kick, shots
     for b in range(bars):
         bt = b * beats * spb
-        kp = [0, 6, 10] if not rush else [0, 4, 8, 12]
-        for st in kp:
-            add(drum, kick(0.26, 165, 48, amp=0.7, click=0.6), bt + st * sd)
-        add(drum, snare(0.17, amp=0.5), bt + spb)
-        add(drum, snare(0.17, amp=0.5), bt + 3 * spb)
-        if not rush:
-            add(drum, snare(0.12, amp=0.16), bt + 2.75 * spb)  # ghost
-        for st in range(0, 16, 2):
-            op = (st % 8 == 6)
-            add(drum, hat(amp=0.16 if not op else 0.13, open_=op), bt + st * sd)
+        for beat in range(beats):
+            at = bt + beat * spb
+            add(drum, kick(0.2, 150, 46, amp=0.28, click=0.1), at)        # feather
+            add(drum, hat(amp=0.13, open_=False), at)                     # ride "ding"
+            add(drum, hat(amp=0.1, open_=False), at + 2 * sd + sw)        # "da"
+        add(drum, snare(0.16, amp=0.42), bt + spb)                        # comp 2
+        add(drum, snare(0.16, amp=0.42), bt + 3 * spb)                    # comp 4
+        if b % 2 == 1:
+            add(drum, snare(0.12, amp=0.18), bt + 2 * spb + 2 * sd + sw)  # ghost
         if rush:
-            add(drum, clap(0.34), bt + spb)
-            add(drum, clap(0.34), bt + 3 * spb)
+            add(drum, clap(0.4), bt + spb)
+            add(drum, clap(0.4), bt + 3 * spb)
+            add(drum, kick(0.22, 150, 46, amp=0.3, click=0.1), bt + 2 * spb)
     sig = buf + drum
-    sig = delay(sig, sd * 3, 0.18, 0.12)
-    sig = reverb(sig, mix=0.1, decay=0.3)
+    sig = delay(sig, sd * 3, 0.14, 0.08)
+    sig = reverb(sig, mix=0.12, decay=0.32)      # tight big-band room
     return sig, loop, tail
 
 
