@@ -1397,6 +1397,21 @@ let mustOpen=false;        // 未開封ロック中フラグ
 const ENERGY_MAX=10;
 
 // ===== パチンコ風 チャンスモード（確変ST RUSH）=====
+// ===== デバッグ用イースターエッグ =====
+// 有効化方法（環境変数相当）:
+//   1) URL に ?debug=1 を付ける
+//   2) ブラウザコンソールで window.MG_DEBUG = true を実行してリロード
+//   3) localStorage.setItem('mg.debug','1') を実行
+// 有効時、ヘッダの「○○ガチャ」テキストを 3 連続タップで次回スピンのラッシュ突入を予約。
+const DEBUG_ON = (()=>{
+  try{
+    if(new URLSearchParams(location.search).get('debug')==='1') return true;
+    if(window.MG_DEBUG===true) return true;
+    if(localStorage.getItem('mg.debug')==='1') return true;
+  }catch(e){}
+  return false;
+})();
+let forceNextRush=false;
 let chanceMode=false;        // チャンスモード突入中か
 let chanceLeft=0;            // ST残り（この回数“ハズレ継続”したら転落）
 let chanceStreak=0;          // 連チャン数
@@ -1526,7 +1541,10 @@ function chanceAfter(lvl){
   // チャンスモード（確変ST RUSH）はスロットモード専用
   if(appMode!=='slot') return;
   if(!chanceMode){
-    if(lvl>=sp.triggerLvl){
+    // デバッグ：イースターエッグで予約された強制突入
+    const forced=DEBUG_ON && forceNextRush;
+    if(forced) forceNextRush=false;
+    if(forced || lvl>=sp.triggerLvl){
       chanceMode=true; chanceStreak=1; chanceLeft=sp.stSpins;
       renderChance(); chanceFx('enter',1);
     }
@@ -2079,6 +2097,34 @@ function masterOut(ctx){ return masterGain || ctx.destination; }
   document.addEventListener('touchstart',warm,true);
   document.addEventListener('keydown',warm,true);
 })();
+
+// デバッグ：ヘッダの「ガチャ」タイトルを 3 連続タップで次回ラッシュ突入を予約
+if(DEBUG_ON){
+  const h1=document.querySelector('h1');
+  if(h1){
+    h1.style.cursor='pointer';
+    h1.title='[debug] 3 連続タップで次回ラッシュ突入';
+    let taps=0, lastT=0;
+    h1.addEventListener('pointerdown',()=>{
+      const now=Date.now();
+      taps = (now-lastT < 600) ? taps+1 : 1;
+      lastT=now;
+      if(taps>=3){
+        taps=0;
+        forceNextRush=true;
+        const toast=document.createElement('div');
+        toast.textContent='[DEBUG] 次回スピンでラッシュ突入';
+        toast.style.cssText='position:fixed;left:50%;top:14%;transform:translateX(-50%);z-index:999;'
+          +'background:rgba(0,0,0,.85);color:#ffd23f;font-family:"Reggae One",cursive;'
+          +'padding:8px 14px;border-radius:8px;border:2px solid #ffd23f;font-size:13px;'
+          +'box-shadow:0 4px 14px rgba(0,0,0,.5);pointer-events:none;';
+        document.body.appendChild(toast);
+        setTimeout(()=>toast.remove(),1800);
+      }
+    });
+  }
+}
+
 function applyMasterVolume(){
   if(!masterGain || !actx) return;
   const v = soundMuted ? 0 : soundVolume;
