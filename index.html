@@ -1024,11 +1024,14 @@
      初回操作で無音ループ再生して収録セッションを保持し、SFX 発生時は
      この同じ要素で WAV を再生する（JS側 sfx()/playBuf()）。要素を分ける
      と収録が無音ループ側に固定され SFX が録れない。display:none だと
-     一部 iOS でメディア無効化され得るため不可視でも描画は残す。 -->
-<audio id="silentKeep" loop playsinline preload="auto"
+     一部 iOS でメディア無効化され得るため不可視でも描画は残す。
+     <audio> は iOS の画面収録(ReplayKit)に乗らないため <video> 要素を使う
+     （音声のみの WAV を再生。メディアAPI は <audio> と互換）。 -->
+<video id="silentKeep" loop playsinline webkit-playsinline preload="auto"
+  disablepictureinpicture x-webkit-airplay="deny"
   style="position:fixed;left:-9999px;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none"
   src="data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=">
-</audio>
+</video>
 
 <script>
 const STORES = {
@@ -2193,9 +2196,13 @@ const BGM_TRACKS={
    プリレンダ→専用のループ <audio> から再生（iOS 画面収録に乗る／
    ミュート・音量にも追従）。店舗×通常/RUSH の最大6種をキャッシュ。 */
 const BGM_BARS=4, BGM_MIXG=0.5;
-const bgmAudio=document.createElement('audio');
+// iOS 画面収録は <audio> を録らないため BGM も <video> 要素で再生
+const bgmAudio=document.createElement('video');
 bgmAudio.loop=true; bgmAudio.playsInline=true; bgmAudio.preload='auto';
-bgmAudio.style.display='none'; document.body.appendChild(bgmAudio);
+bgmAudio.setAttribute('playsinline',''); bgmAudio.setAttribute('webkit-playsinline','');
+bgmAudio.setAttribute('disablepictureinpicture','');
+bgmAudio.style.cssText='position:fixed;left:-9999px;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none';
+document.body.appendChild(bgmAudio);
 const bgmCache={};
 let bgmKey=null, bgmWanted=false, bgmRush=false, bgmStore=null;
 let bgmFade=0, bgmFadeTimer=null;
