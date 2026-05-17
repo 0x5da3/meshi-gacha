@@ -1032,6 +1032,11 @@
   style="position:fixed;left:-9999px;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none"
   src="data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=">
 </video>
+<!-- iOS 画面収録対策(PR#16)：効果音は MediaRecorder で実エンコード
+     （映像トラック付き=YouTube型）し、この <video> で再生して収録対象に。
+     上の silentKeep は非対応端末フォールバック／BGM とは別系統。 -->
+<video id="sfxVid" playsinline webkit-playsinline preload="auto"
+  style="position:fixed;left:-9999px;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none"></video>
 
 <script>
 const STORES = {
@@ -1580,7 +1585,7 @@ function dispenseCapsule(){
   pendingResult=preSingle||computeResult(); preSingle=null;
   const rare=budgetRarity(pendingResult.budget);
   mustOpen = (confirmThreshold!=null && rare.lvl>=confirmThreshold);
-  sfx(1.5, ctx=>dispenseSound(ctx,0,rare.lvl));
+  clip(rare.lvl>=4?'dHi':rare.lvl>=2?'dMid':'dLow');
   renderCapsuleView();
 }
 
@@ -1621,7 +1626,7 @@ function openCapsule(){
   mustOpen=false;
   const r=pendingResult;
   const rare=budgetRarity(r.budget);
-  sfx(rare.lvl>=2?2.0:0.7, ctx=>{ popOpen(ctx,0); if(rare.lvl>=2) fanfare(ctx,0.10,rare.lvl); });
+  clip(rare.lvl>=4?'winBig':rare.lvl>=2?'win':'open');
 
   const cap=document.getElementById('bigcap');
   if(cap) cap.classList.add('opening');
@@ -1768,7 +1773,7 @@ function dispenseTen(){
   pendingTen=preTen||Array.from({length:10},()=>computeResult()); preTen=null;
   const mr=maxRareOf(pendingTen);
   mustOpen = (confirmThreshold!=null && mr.lvl>=confirmThreshold);
-  sfx(1.5, ctx=>dispenseSound(ctx,0,mr.lvl));
+  clip(mr.lvl>=4?'dHi':mr.lvl>=2?'dMid':'dLow');
   const screen=document.getElementById('screen');
   const caps=pendingTen.map((r,i)=>{
     const rr=budgetRarity(r.budget);
@@ -1793,7 +1798,7 @@ function openTen(){
   mustOpen=false;
   const list=pendingTen;
   const mr=maxRareOf(list);
-  sfx(mr.lvl>=2?2.6:1.2, ctx=>{ popOpenMulti(ctx,0,8); if(mr.lvl>=2) fanfare(ctx,0.8,mr.lvl); });
+  clip(mr.lvl>=4?'tenWinBig':mr.lvl>=2?'tenWin':'tenOpen');
   document.querySelectorAll('#tengrid .scap').forEach((el,i)=>{
     setTimeout(()=>el.classList.add('opening'),i*45);
   });
@@ -2038,77 +2043,187 @@ function audioBufferToWav(buf){
   for(let i=0;i<len;i++){ for(let c=0;c<ch;c++){ let s=Math.max(-1,Math.min(1,chans[c][i])); v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true); o+=2; } }
   return ab;
 }
-// 収録される“主たるメディア要素”は1個だけ。無音ループでセッションを
-// 保持し、その同じ要素で SFX を再生する（要素を分けると収録対象が
-// 無音ループ側になり SFX が録れない、というのが今回の症状）。
-const SFX_EL=document.getElementById('silentKeep');
-const SILENT_WAV=SFX_EL?SFX_EL.getAttribute('src'):'';
-let sfxStarted=false, sfxCurUrl=null, sfxRestoreT=null;
+// iOS の画面収録は <audio> の音を一切収録せず、<video>(YouTube型)のみ
+// 収録できると実機診断で確定。主要音を MediaRecorder で実エンコード
+// （映像トラック付き）し、単一の <video> 要素から再生して収録対象にする。
+// MediaRecorder 非対応端末は従来のオフライン合成→<audio> にフォールバック。
+const SFX_EL=document.getElementById('silentKeep');     // フォールバック用 / BGM解禁元
+const VID=document.getElementById('sfxVid');            // 収録対象の <video>
+const SILENT_WAV=SFX_EL?SFX_EL.getAttribute('src'):''; // 無音WAV(BGM要素の解禁用)
+let sfxCurUrl=null;
 function sfxVol(){ return soundMuted?0:Math.min(1,Math.max(0,soundVolume)); }
-function freeCurUrl(){ if(sfxCurUrl){ try{URL.revokeObjectURL(sfxCurUrl);}catch(e){} sfxCurUrl=null; } }
+function masterOut(ctx){ return ctx.__out || ctx.destination; }   // __out で録音先へ差替
 
-// 収録セッション保持用の“無音ループ”。診断用の周期ブリップ（ピープ音）は撤去。
-const keepSrc=SILENT_WAV; let keepVol=0.55;
-// 同じ要素を無音ループに戻し、収録セッションを途切れさせない
-function startSilentLoop(){
+// --- フォールバック：オフライン合成→WAV→<audio> 一発再生（非対応端末用）---
+function playBuf(buf){
   if(!SFX_EL) return;
   try{
-    SFX_EL.loop=true; SFX_EL.muted=false;
-    SFX_EL.volume = soundMuted?0:keepVol;
-    if(keepSrc && SFX_EL.getAttribute('src')!==keepSrc) SFX_EL.src=keepSrc;
-    const p=SFX_EL.play(); if(p&&p.catch) p.catch(()=>{});
-  }catch(e){}
-}
-function onSfxEnded(){ restoreLoop(); }
-function restoreLoop(){
-  if(sfxRestoreT){ clearTimeout(sfxRestoreT); sfxRestoreT=null; }
-  if(SFX_EL) SFX_EL.removeEventListener('ended',onSfxEnded);
-  freeCurUrl();
-  startSilentLoop();
-}
-function playBuf(buf){
-  if(!SFX_EL){ return; }
-  try{
+    if(sfxCurUrl){ try{URL.revokeObjectURL(sfxCurUrl);}catch(e){} }
     const url=URL.createObjectURL(new Blob([audioBufferToWav(buf)],{type:'audio/wav'}));
-    if(sfxRestoreT){ clearTimeout(sfxRestoreT); sfxRestoreT=null; }
-    SFX_EL.removeEventListener('ended',onSfxEnded);
-    freeCurUrl();
     sfxCurUrl=url;
     SFX_EL.loop=false; SFX_EL.muted=false; SFX_EL.volume=sfxVol();
     SFX_EL.src=url;
-    try{ SFX_EL.currentTime=0; }catch(e){}
-    SFX_EL.addEventListener('ended',onSfxEnded,{once:true});
-    // ended が来ない端末向けの保険（lead 込みの長さ＋余裕）
-    sfxRestoreT=setTimeout(restoreLoop,((buf.duration+SFX_LEAD)*1000|0)+1800);
-    const p=SFX_EL.play(); if(p&&p.catch) p.catch(()=>restoreLoop());
-  }catch(e){ restoreLoop(); }
+    const p=SFX_EL.play(); if(p&&p.catch) p.catch(()=>{});
+  }catch(e){}
 }
-// build(ctx): ctx.destination 向けに t=0 起点でスケジュールする合成
 function sfx(durSec,build){
   if(soundMuted) return;
   let octx; try{ octx=OfflineCtx(durSec); }catch(e){ return; }
-  octx.__sfx=true;
   try{ build(octx); }catch(e){ return; }
-  let used=false;
-  const once=b=>{ if(used||!b) return; used=true; playBuf(b); };
+  let used=false; const once=b=>{ if(used||!b)return; used=true; playBuf(b); };
   try{
-    octx.oncomplete=e=>once(e.renderedBuffer);   // 旧 webkit 用（promise 非対応）
+    octx.oncomplete=e=>once(e.renderedBuffer);
     const r=octx.startRendering();
     if(r&&r.then) r.then(once).catch(()=>{});
   }catch(e){}
 }
-function masterOut(ctx){ return ctx.destination; }
-function applyMasterVolume(){ if(SFX_EL){ try{ SFX_EL.volume = soundMuted?0:(SFX_EL.loop?keepVol:sfxVol()); }catch(e){} } if(typeof bgmApplyVol==='function') bgmApplyVol(); }
 
-// 最初のユーザー操作で context を起こし、収録セッション保持の無音ループを開始
-let audioUnlocked=false;
+// --- <video> 実エンコード方式（本命）---
+// 主要音を“シーン単位”の固定クリップに集約（単一 <video> で順次再生）
+const CLIPS={
+  click:    {d:0.30,b:c=>buttonClick(c,c.currentTime)},
+  spin:     {d:1.05,b:c=>buildGacha(c,c.currentTime,0.72)},
+  spinBig:  {d:1.15,b:c=>buildGachaBig(c,c.currentTime,0.75)},
+  dLow:     {d:0.95,b:c=>dispenseSound(c,c.currentTime,1)},
+  dMid:     {d:1.15,b:c=>dispenseSound(c,c.currentTime,3)},
+  dHi:      {d:1.45,b:c=>dispenseSound(c,c.currentTime,4)},
+  open:     {d:0.65,b:c=>popOpen(c,c.currentTime)},
+  win:      {d:1.65,b:c=>{const t=c.currentTime;popOpen(c,t);fanfare(c,t+0.12,3);}},
+  winBig:   {d:2.15,b:c=>{const t=c.currentTime;popOpen(c,t);fanfare(c,t+0.12,4);}},
+  tenOpen:  {d:1.35,b:c=>popOpenMulti(c,c.currentTime,8)},
+  tenWin:   {d:2.65,b:c=>{const t=c.currentTime;popOpenMulti(c,t,8);fanfare(c,t+0.85,3);}},
+  tenWinBig:{d:2.85,b:c=>{const t=c.currentTime;popOpenMulti(c,t,8);fanfare(c,t+0.85,4);}},
+  rattle:   {d:0.28,b:c=>rattleHit(c,c.currentTime,0.22)},
+  slotWin:  {d:1.65,b:c=>fanfare(c,c.currentTime,3)},
+  slotWinBig:{d:2.25,b:c=>fanfare(c,c.currentTime,4)},
+  // 収録セッション保持用のほぼ無音ループ
+  keep:     {d:1.10,b:c=>{const o=c.createOscillator();o.type='sine';o.frequency.value=42;
+              const g=c.createGain();g.gain.value=0.00006;o.connect(g).connect(masterOut(c));
+              o.start(c.currentTime);o.stop(c.currentTime+1.05);}}
+};
+const ENCODE_ORDER=['keep','click','spin','spinBig','dLow','open','dMid','win',
+  'tenOpen','dHi','winBig','tenWin','tenWinBig','rattle','slotWin','slotWinBig'];
+let clipUrl={}, videoMode=false, encQueued=false, audioUnlocked=false;
+let vEndH=null, vRestoreT=null;
+let _vcanvas=null,_vstream=null,_vtrack=null,_vtimer=null;
+
+function getVideoTrack(){
+  if(_vtrack) return _vtrack;
+  try{
+    _vcanvas=document.createElement('canvas'); _vcanvas.width=2; _vcanvas.height=2;
+    const cx=_vcanvas.getContext('2d'); let f=0;
+    const draw=()=>{ if(!cx) return; cx.fillStyle=(f^=1)?'#000':'#010101'; cx.fillRect(0,0,2,2); };
+    draw();
+    if(typeof _vcanvas.captureStream!=='function') return null;
+    _vstream=_vcanvas.captureStream(6);
+    _vtrack=(_vstream.getVideoTracks()||[])[0]||null;
+    _vtimer=setInterval(draw,160);
+    return _vtrack;
+  }catch(e){ return null; }
+}
+function pickMime(){
+  if(typeof MediaRecorder==='undefined' || !MediaRecorder.isTypeSupported) return '';
+  const cs=['video/mp4','video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/webm;codecs=h264,opus','video/webm;codecs=vp8,opus','video/webm'];
+  for(const m of cs){ if(MediaRecorder.isTypeSupported(m)) return m; }
+  return '';
+}
+// 1クリップを実エンコード（録音先へ流すのでスピーカーには出さない）
+function encodeClip(id){
+  return new Promise(res=>{
+    const def=CLIPS[id];
+    if(!def || typeof MediaRecorder==='undefined'){ res(null); return; }
+    let ctx; try{ ctx=AC(); }catch(e){ res(null); return; }
+    if(!ctx || typeof ctx.createMediaStreamDestination!=='function'){ res(null); return; }
+    try{ if(ctx.state==='suspended') ctx.resume(); }catch(e){}
+    let aDest; try{ aDest=ctx.createMediaStreamDestination(); }catch(e){ res(null); return; }
+    const tracks=[]; const vt=getVideoTrack(); if(vt) tracks.push(vt);
+    (aDest.stream.getAudioTracks()||[]).forEach(t=>tracks.push(t));
+    let stream; try{ stream=new MediaStream(tracks); }catch(e){ stream=aDest.stream; }
+    const mime=pickMime();
+    let rec;
+    try{ rec = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }
+    catch(e){ try{ rec=new MediaRecorder(stream); }catch(e2){ res(null); return; } }
+    const chunks=[];
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{ try{ const b=new Blob(chunks,{type:rec.mimeType||mime||'video/mp4'});
+      res(b.size?URL.createObjectURL(b):null); }catch(e){ res(null); } };
+    ctx.__out=aDest;
+    try{ def.b(ctx); }catch(e){}
+    ctx.__out=null;
+    try{ rec.start(); }catch(e){ res(null); return; }
+    setTimeout(()=>{ try{ if(rec.state!=='inactive') rec.stop(); }catch(e){} },(def.d*1000|0)+260);
+  });
+}
+function vClear(){ if(vRestoreT){clearTimeout(vRestoreT);vRestoreT=null;}
+  if(VID&&vEndH){VID.removeEventListener('ended',vEndH);vEndH=null;} }
+function vKeepLoop(){
+  if(!VID||!clipUrl.keep) return;
+  try{
+    vClear();
+    VID.loop=true; VID.muted=false; VID.volume=sfxVol();
+    if(VID.getAttribute('src')!==clipUrl.keep) VID.src=clipUrl.keep;
+    const p=VID.play(); if(p&&p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+function vPlay(id){
+  if(!VID||!clipUrl[id]) return false;
+  try{
+    vClear();
+    VID.loop=false; VID.muted=false; VID.volume=sfxVol();
+    VID.src=clipUrl[id];
+    try{ VID.currentTime=0; }catch(e){}
+    vEndH=()=>vKeepLoop();
+    VID.addEventListener('ended',vEndH,{once:true});
+    vRestoreT=setTimeout(vKeepLoop,((CLIPS[id]?CLIPS[id].d:2)*1000|0)+1800);
+    const p=VID.play(); if(p&&p.catch) p.catch(()=>vKeepLoop());
+    return true;
+  }catch(e){ vKeepLoop(); return false; }
+}
+// ゲーム側はこの clip(id) を呼ぶ
+function clip(id){
+  if(soundMuted) return;
+  if(videoMode){ if(clipUrl[id]) vPlay(id); return; }   // 動画方式は収録優先
+  const d=CLIPS[id]; if(d) sfx(d.d, c=>d.b(c));          // 非対応端末フォールバック
+}
+function applyMasterVolume(){
+  try{ if(VID) VID.volume=sfxVol(); }catch(e){}
+  try{ if(SFX_EL) SFX_EL.volume=sfxVol(); }catch(e){}
+  if(typeof bgmApplyVol==='function') bgmApplyVol();   // 店舗別BGMの音量も追従
+}
+// ユーザー操作中に <video> を一度動かして以後の自動再生を解禁
+function primeVideoEl(){
+  try{
+    if(!VID) return;
+    const vt=getVideoTrack();
+    if(vt && _vstream){
+      VID.srcObject=_vstream; VID.muted=true; VID.playsInline=true;
+      const p=VID.play(); if(p&&p.catch) p.catch(()=>{});
+    }
+  }catch(e){}
+}
+async function startVideoAudio(){
+  if(encQueued) return; encQueued=true;
+  if(typeof MediaRecorder==='undefined'){ videoMode=false; return; }
+  for(const id of ENCODE_ORDER){
+    let u=null; try{ u=await encodeClip(id); }catch(e){ u=null; }
+    if(u){
+      clipUrl[id]=u;
+      if(id==='keep' && !videoMode){ videoMode=true; try{VID.srcObject=null;}catch(e){} vKeepLoop(); }
+    }else if(id==='keep'){
+      videoMode=false;   // 保持音を録れない＝この方式不可。<audio>へフォールバック継続
+    }
+  }
+}
 function unlockAudio(){
   try{
     const ctx=AC(); if(ctx&&ctx.state==='suspended') ctx.resume();
-    if(!sfxStarted){ sfxStarted=true; startSilentLoop(); }
-    if(typeof bgmPrime==='function') bgmPrime();
-    if(typeof bgmPrewarm==='function') bgmPrewarm();
-    audioUnlocked=true;
+    if(!audioUnlocked){
+      audioUnlocked=true;
+      primeVideoEl(); startVideoAudio();
+      if(typeof bgmPrime==='function') bgmPrime();
+      if(typeof bgmPrewarm==='function') bgmPrewarm();
+    }
   }catch(e){}
 }
 ['pointerdown','touchend','click','keydown'].forEach(ev=>
@@ -2586,10 +2701,7 @@ function buildGacha(ctx,t0,sec){
     t+=0.045+Math.random()*0.075;
   }
 }
-function playGacha(durationMs){
-  const sec=durationMs/1000;
-  sfx(sec+0.3, ctx=>buildGacha(ctx,0,sec));
-}
+function playGacha(){ clip('spin'); }
 
 // 10連用：重厚＆密なガラガラ＋上昇ビルドアップ
 function buildGachaBig(ctx,t0,sec){
@@ -2621,10 +2733,7 @@ function buildGachaBig(ctx,t0,sec){
   sweep.connect(swg).connect(masterOut(ctx));
   sweep.start(t0+sec*0.55); sweep.stop(t0+sec+0.06);
 }
-function playGachaBig(durationMs){
-  const sec=durationMs/1000;
-  sfx(sec+0.4, ctx=>buildGachaBig(ctx,0,sec));
-}
+function playGachaBig(){ clip('spinBig'); }
 
 // 10連の開封：プラスチックの連続パカパカ＋締めのアクセント
 function popOpenMulti(ctx,t,n){
@@ -2658,9 +2767,8 @@ function modeAnimMs(lvl){
 }
 function safeSound(ten,lvl){
   try{
-    sfx(0.25, ctx=>buttonClick(ctx,0));
-    const dur=Math.max(525,modeAnimMs(lvl|0)-60);
-    if(ten) playGachaBig(dur); else playGacha(dur);
+    clip('click');
+    if(ten) playGachaBig(); else playGacha();
   }catch(e){/* 音声が使えない環境でもガチャは動かす */}
 }
 
@@ -2874,7 +2982,7 @@ async function runSlot(lvl){
       if(reelFaceEls[i]) reelFaceEls[i].textContent=targets[i];
       if(reelEls[i]){ reelEls[i].classList.remove('spinning'); reelEls[i].classList.add('stop'); }
       if(stopBtns[i]){ stopBtns[i].classList.add('done'); stopBtns[i].disabled=true; }
-      try{ sfx(0.2, ctx=>rattleHit(ctx,0,0.22)); }catch(e){}
+      try{ clip('rattle'); }catch(e){}
       // 押下ごとにモニタを 1 シーン進める
       applyMonBeat(beats[pressN]);
       if(stopped.every(Boolean)){
@@ -2891,7 +2999,7 @@ async function runSlot(lvl){
   if(win){
     if(slotEl){ slotEl.classList.add('win'); }
     if(slotFlashEl){ slotFlashEl.classList.remove('on'); void slotFlashEl.offsetWidth; slotFlashEl.classList.add('on'); }
-    try{ sfx(2.2, ctx=>fanfare(ctx,0,Math.min(4,lvl))); }catch(e){}
+    try{ clip(Math.min(4,lvl)>=4?'slotWinBig':'slotWin'); }catch(e){}
     await sleep(420);
   }
 
