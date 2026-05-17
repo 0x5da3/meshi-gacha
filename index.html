@@ -2610,6 +2610,7 @@ function applyMode(m){
   if(!spinning){
     if(m==='slot') slotIdle(); else monitorIdle();
   }
+  syncSlotLockDefault();
 }
 modesw.addEventListener('click',e=>{
   const b=e.target.closest('.msbtn'); if(!b) return;
@@ -2682,9 +2683,22 @@ function applyStore(key){
     b.setAttribute('aria-selected',on?'true':'false');
   });
   renderRates(); renderSpec(); renderChance();
+  syncSlotLockDefault();
   if(!spinning){
     if(appMode==='slot') slotIdle(); else monitorIdle();   // 演出中の店舗切替は乱さない
   }
+}
+
+// スロットモードでは未開封ロックのしきい値を店舗の突入上限（triggerLvl）に揃える
+function syncSlotLockDefault(){
+  if(appMode!=='slot') return;
+  const lvl=curSpec().triggerLvl;
+  confirmThreshold=lvl;
+  const seg=document.getElementById('cfSeg');
+  if(!seg) return;
+  seg.querySelectorAll('.seg-b').forEach(b=>{
+    b.classList.toggle('on', b.dataset.th!=='' && +b.dataset.th===lvl);
+  });
 }
 storesw.addEventListener('click',e=>{
   const b=e.target.closest('.ssbtn');
