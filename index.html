@@ -863,6 +863,13 @@
       </div>
       <div class="chancebar" id="chanceWrap" hidden></div>
       <div class="setrow">
+        <span class="set-lab">予算モード</span>
+        <div class="seg" id="bmSeg">
+          <button class="seg-b on" data-bm="normal">ノーマル&nbsp;¥500</button>
+          <button class="seg-b" data-bm="rich">リッチ&nbsp;¥1000</button>
+        </div>
+      </div>
+      <div class="setrow">
         <span class="set-lab">未開封ロック</span>
         <div class="seg" id="cfSeg">
           <button class="seg-b" data-th="">OFF</button>
@@ -909,7 +916,7 @@
     <h2>📊 排出率</h2>
     <div class="ratebox" id="rateRows"></div>
     <div class="specbox" id="specBox"></div>
-    <p class="ratenote">予算 ¥1,000〜¥5,000 を100円刻みで抽選。高額ほど指数的に出にくく設定。<br>筐体（お店）ごとに大当り確率・突入条件・確変継続率が異なります。</p>
+    <p class="ratenote" id="rateNote">予算 ¥1,000〜¥5,000 を抽選。高額ほど指数的に出にくく設定。<br>筐体（お店）ごとに大当り確率・突入条件・確変継続率が異なります。</p>
   </div>
 
   <footer>
@@ -1271,11 +1278,16 @@ let confirmThreshold=4; // このレア度(lvl)以上で開封必須（未開封
 let soundMuted=false, soundVolume=0.8;
 // 演出モード：'gacha'（モニタなし）／'slot'（絵柄揃え）
 let appMode='gacha';
+// 予算モード：'normal'=¥500 刻み／'rich'=¥1000 刻み（どちらも ¥1000〜¥5000）
+let budgetMode='normal';
 try{
   const sv=localStorage.getItem('mg.snd.vol'); if(sv!=null){ const n=parseFloat(sv); if(isFinite(n)) soundVolume=Math.min(1,Math.max(0,n)); }
   const sm=localStorage.getItem('mg.snd.mute'); if(sm!=null) soundMuted=(sm==='1');
   const am=localStorage.getItem('mg.mode'); if(am==='slot'||am==='gacha') appMode=am;
+  const bm=localStorage.getItem('mg.budget'); if(bm==='normal'||bm==='rich') budgetMode=bm;
 }catch(e){}
+const BUDGET_MIN=1000, BUDGET_MAX=5000;
+function budgetStep(){ return budgetMode==='rich'?1000:500; }
 let mustOpen=false;        // 未開封ロック中フラグ
 const ENERGY_MAX=10;
 
@@ -1290,15 +1302,16 @@ function curSpec(){ return (STORES[currentStore] && STORES[currentStore].spec) |
 // 実質継続率（ST中に1回でも継続抽選を引ける確率）
 function continueRate(sp){ return 1-Math.pow(1-sp.pHit,sp.stSpins); }
 
-// 予算ガチャ：¥1,000〜¥5,000を100円刻みで、高額ほど指数的に出にくくする
+// 予算ガチャ：¥1,000〜¥5,000を予算モードの刻みで抽選し、高額ほど指数的に出にくくする
 function rollBudget(){
   const sp=curSpec();
+  const step=budgetStep();
   const steps=[];
   let weights=[], sum=0;
-  for(let b=1000;b<=5000;b+=100){
+  for(let b=BUDGET_MIN;b<=BUDGET_MAX;b+=step){
     const w = chanceMode
-      ? Math.exp((b-1000)/sp.boost)    // チャンス中：高予算（高レア）に大きく偏る
-      : Math.exp(-(b-1000)/sp.decay);  // 通常：低予算に偏る（筐体ごとに辛さが違う）
+      ? Math.exp((b-BUDGET_MIN)/sp.boost)    // チャンス中：高予算（高レア）に大きく偏る
+      : Math.exp(-(b-BUDGET_MIN)/sp.decay);  // 通常：低予算に偏る（筐体ごとに辛さが違う）
     steps.push(b); weights.push(w); sum+=w;
   }
   let r=Math.random()*sum;
@@ -2479,12 +2492,30 @@ cfSeg.addEventListener('click',e=>{
   confirmThreshold = b.dataset.th==='' ? null : +b.dataset.th;
 });
 
+// 予算モード切替（ノーマル ¥500 刻み / リッチ ¥1000 刻み）
+const bmSeg=document.getElementById('bmSeg');
+function applyBudgetMode(m){
+  if(m!=='normal'&&m!=='rich') m='normal';
+  budgetMode=m;
+  try{ localStorage.setItem('mg.budget',m); }catch(e){}
+  bmSeg.querySelectorAll('.seg-b').forEach(b=>{
+    b.classList.toggle('on', b.dataset.bm===m);
+  });
+  renderRates(); renderSpec(); renderChance();
+}
+bmSeg.addEventListener('click',e=>{
+  const b=e.target.closest('.seg-b'); if(!b) return;
+  applyBudgetMode(b.dataset.bm);
+});
+applyBudgetMode(budgetMode);
+
 // 排出率を rollBudget と同一の重み付けから算出して表示
 function renderRates(){
   const sp=curSpec();
+  const step=budgetStep();
   const tiers={}; let sum=0;
-  for(let b=1000;b<=5000;b+=100){
-    const w=Math.exp(-(b-1000)/sp.decay);   // rollBudget（通常時）と同じ式
+  for(let b=BUDGET_MIN;b<=BUDGET_MAX;b+=step){
+    const w=Math.exp(-(b-BUDGET_MIN)/sp.decay);   // rollBudget（通常時）と同じ式
     const r=budgetRarity(b);
     if(!tiers[r.lvl]) tiers[r.lvl]={lvl:r.lvl,t:r.t,c:r.c,w:0};
     tiers[r.lvl].w+=w; sum+=w;
@@ -2509,9 +2540,10 @@ function renderSpec(){
   const s=STORES[currentStore], sp=curSpec();
   const TRIG={2:'R レア',3:'RR ダブルレア',4:'SR スーパーレア'};
   // 通常時の重みで、突入条件レア度以上を引く確率＝RUSH突入率
+  const step=budgetStep();
   let sum=0, hit=0;
-  for(let b=1000;b<=5000;b+=100){
-    const w=Math.exp(-(b-1000)/sp.decay);
+  for(let b=BUDGET_MIN;b<=BUDGET_MAX;b+=step){
+    const w=Math.exp(-(b-BUDGET_MIN)/sp.decay);
     sum+=w;
     if(budgetRarity(b).lvl>=sp.triggerLvl) hit+=w;
   }
