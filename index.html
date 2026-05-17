@@ -2562,11 +2562,21 @@ async function runSlot(lvl){
 }
 
 // 停止ボタン／START ボタンの配線
+// iOS の click 発火遅延を避けるため pointerdown で即時受ける。
+// pointerdown 未対応の環境は click にフォールバック。
 stopBtns.forEach((b,i)=>{
   if(!b) return;
-  b.addEventListener('click',()=>{
+  const fire=(e)=>{
+    if(b.disabled) return;
+    e.preventDefault();
     if(slotPending) slotPending.stopReel(i);
-  });
+  };
+  if('onpointerdown' in window){
+    b.addEventListener('pointerdown',fire);
+  }else{
+    b.addEventListener('touchstart',fire,{passive:false});
+    b.addEventListener('click',fire);
+  }
 });
 if(slotstartBtn) slotstartBtn.addEventListener('click',startGacha);
 
