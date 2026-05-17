@@ -509,9 +509,47 @@
     100%{opacity:0;box-shadow:inset 0 0 140px 60px rgba(120,220,255,0)}
   }
 
+  /* ===== チャンスモード（確変ST RUSH）===== */
+  .chancebar{
+    display:flex;align-items:center;gap:7px;margin-top:8px;
+    background:linear-gradient(90deg,#b3001b,#ff7a00);
+    border:2px solid #ffd23f;border-radius:99px;padding:5px 12px;color:#fff;
+    font-family:"Reggae One",cursive;font-size:12px;letter-spacing:.02em;
+    animation:cmpulse 1s ease-in-out infinite;
+  }
+  .chancebar[hidden]{display:none}
+  .chancebar .cm-t{font-size:12px}
+  .chancebar .cm-st{margin-left:auto;background:rgba(0,0,0,.28);padding:2px 9px;border-radius:99px;font-size:11px}
+  .chancebar .cm-rn{background:#fff;color:var(--rosso);padding:2px 9px;border-radius:99px;font-size:12px}
+  @keyframes cmpulse{
+    0%,100%{box-shadow:0 0 0 2px rgba(255,210,80,.35),0 0 12px 2px rgba(255,140,0,.55)}
+    50%{box-shadow:0 0 0 2px rgba(255,210,80,.75),0 0 22px 7px rgba(255,140,0,.95)}
+  }
+  .machine.chance{
+    box-shadow:0 9px 0 var(--rosso-dark),0 0 0 3px rgba(255,210,80,.55),
+               0 16px 30px rgba(255,120,0,.5);
+  }
+  .chancefx{
+    position:fixed;left:50%;top:40%;z-index:97;pointer-events:none;
+    transform:translate(-50%,-50%) scale(.2);opacity:0;white-space:nowrap;
+    font-family:"Reggae One",cursive;font-size:clamp(30px,11vw,60px);
+    color:#fff;-webkit-text-stroke:2px rgba(0,0,0,.28);
+    text-shadow:0 0 16px rgba(255,200,80,.9),0 6px 0 rgba(0,0,0,.22);
+    padding:14px 40px;border-radius:8px;border:4px solid rgba(255,255,255,.92);
+    animation:rbanner 2.05s cubic-bezier(.2,1.6,.3,1) forwards;
+  }
+  .chancefx .cfbg{position:absolute;inset:0;z-index:-1;border-radius:4px;opacity:.95}
+  .chancefx.enter .cfbg{
+    background:linear-gradient(90deg,#ff2d6f,#ff8a00,#ffd23f,#ff2d6f);
+    background-size:300% 100%;animation:holo 1s linear infinite;
+  }
+  .chancefx.cont .cfbg{background:linear-gradient(135deg,#ff7a00,#b3001b)}
+  .chancefx.end{font-size:clamp(24px,8vw,44px);color:#ffe7c2}
+  .chancefx.end .cfbg{background:linear-gradient(135deg,#5a5a5a,#222)}
+
   @media (prefers-reduced-motion:reduce){
-    .bigcap,.aura,.rays,.spark,.r4 .bigcap .ch,.kaboom{animation:none}
-    .shock,.rbanner,.coin,.cutin,.heat{display:none}
+    .bigcap,.aura,.rays,.spark,.r4 .bigcap .ch,.kaboom,.chancebar{animation:none}
+    .shock,.rbanner,.coin,.cutin,.heat,.chancefx{display:none}
     .monitor.heat,.mon-anim .mon-emoji,.mon-anim .mon-cap,
     .mon-stage.reach .mon-cap,.mon-flash.on{animation:none}
   }
@@ -654,6 +692,13 @@
   .raterow .rbar i{display:block;height:100%;border-radius:99px}
   .raterow .rpct{flex:0 0 42px;text-align:right;font-family:"Reggae One",cursive;font-size:12px}
   .ratenote{font-size:8px;color:#a98c63;line-height:1.5;margin-top:4px;text-align:center}
+  .specbox{background:var(--carta);border:2px solid #e6d2ad;border-radius:9px;padding:7px 10px;margin-top:8px}
+  .spec-h{font-family:"Reggae One",cursive;font-size:12px;color:var(--rosso);margin-bottom:5px;display:flex;align-items:center;gap:5px}
+  .spec-h b{background:var(--rosso);color:#fff;font-size:10px;padding:1px 8px;border-radius:99px}
+  .spec-g{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+  .spec-g>div{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:#7a6242;border-bottom:1px dashed #ecd9b8;padding:3px 0}
+  .spec-g>div b{font-family:"Reggae One",cursive;color:var(--ink);font-size:12px}
+  .spec-g>div b.hot{color:var(--rosso)}
 
   @keyframes pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
   @keyframes slidein{0%{transform:translateX(-22px);opacity:0}100%{transform:none;opacity:1}}
@@ -701,6 +746,7 @@
         <span class="ecells" id="ecells"></span>
         <span class="ecount" id="ecount">0/10</span>
       </div>
+      <div class="chancebar" id="chanceWrap" hidden></div>
       <div class="setrow">
         <span class="set-lab">未開封ロック</span>
         <div class="seg" id="cfSeg">
@@ -740,7 +786,8 @@
   <div class="rates">
     <h2>📊 排出率</h2>
     <div class="ratebox" id="rateRows"></div>
-    <p class="ratenote">予算 ¥1,000〜¥5,000 を100円刻みで抽選。高額ほど指数的に出にくく設定。</p>
+    <div class="specbox" id="specBox"></div>
+    <p class="ratenote">予算 ¥1,000〜¥5,000 を100円刻みで抽選。高額ほど指数的に出にくく設定。<br>筐体（お店）ごとに大当り確率・突入条件・確変継続率が異なります。</p>
   </div>
 
   <footer>
@@ -759,6 +806,7 @@ const STORES = {
     emoji: '🍝',
     tag: 'SAIZERIYA GACHA',
     theme: { rosso:'#0e8a43', rossoDark:'#084e27', verde:'#d11f3a', oro:'#e6a417' },
+    spec: { type:'ノーマル機', decay:850, boost:1200, triggerLvl:3, stSpins:8, pHit:0.083 },
     story: {
       tag:'SAIZE STORY',
       idle:['🍝','本日のまかない、なに出る？'],
@@ -869,6 +917,7 @@ const STORES = {
     emoji: '🥟',
     tag: 'OHSHO GACHA',
     theme: { rosso:'#c8102e', rossoDark:'#8e0a20', verde:'#0a7a3d', oro:'#e6a417' },
+    spec: { type:'甘デジ', decay:1100, boost:1100, triggerLvl:2, stSpins:6, pHit:0.077 },
     story: {
       tag:'OHSHO STORY',
       idle:['🥟','鉄鍋、あたたまってます'],
@@ -978,6 +1027,7 @@ const STORES = {
     emoji: '🍛',
     tag: 'COCO ICHIBANYA GACHA',
     theme: { rosso:'#e9a100', rossoDark:'#a35f00', verde:'#c8102e', oro:'#b5630a' },
+    spec: { type:'MAX機', decay:650, boost:1450, triggerLvl:3, stSpins:10, pHit:0.10 },
     story: {
       tag:'CURRY STORY',
       idle:['🍛','スパイス、調合中…'],
@@ -1098,12 +1148,26 @@ let confirmThreshold=4; // このレア度(lvl)以上で開封必須（未開封
 let mustOpen=false;        // 未開封ロック中フラグ
 const ENERGY_MAX=10;
 
+// ===== パチンコ風 チャンスモード（確変ST RUSH）=====
+let chanceMode=false;        // チャンスモード突入中か
+let chanceLeft=0;            // ST残り（この回数“ハズレ継続”したら転落）
+let chanceStreak=0;          // 連チャン数
+const MAX_STREAK=50;         // 安全上限
+const DEFAULT_SPEC={ type:'ノーマル機', decay:850, boost:1200, triggerLvl:3, stSpins:8, pHit:0.083 };
+// 現在の筐体スペック（店舗ごとに大当り確率・突入条件・確変継続率が異なる）
+function curSpec(){ return (STORES[currentStore] && STORES[currentStore].spec) || DEFAULT_SPEC; }
+// 実質継続率（ST中に1回でも継続抽選を引ける確率）
+function continueRate(sp){ return 1-Math.pow(1-sp.pHit,sp.stSpins); }
+
 // 予算ガチャ：¥1,000〜¥5,000を100円刻みで、高額ほど指数的に出にくくする
 function rollBudget(){
+  const sp=curSpec();
   const steps=[];
   let weights=[], sum=0;
   for(let b=1000;b<=5000;b+=100){
-    const w=Math.exp(-(b-1000)/850); // 減衰スケール（小さいほど低予算に偏る）
+    const w = chanceMode
+      ? Math.exp((b-1000)/sp.boost)    // チャンス中：高予算（高レア）に大きく偏る
+      : Math.exp(-(b-1000)/sp.decay);  // 通常：低予算に偏る（筐体ごとに辛さが違う）
     steps.push(b); weights.push(w); sum+=w;
   }
   let r=Math.random()*sum;
@@ -1191,6 +1255,70 @@ function renderEnergy(){
   document.getElementById('energyWrap').classList.toggle('full',full);
 }
 
+// チャンスモードのバッジ描画
+function renderChance(){
+  const w=document.getElementById('chanceWrap');
+  if(!w) return;
+  const m=document.getElementById('machine');
+  if(m) m.classList.toggle('chance',chanceMode);
+  if(chanceMode){
+    w.hidden=false;
+    w.innerHTML=`<span class="cm-ic">🔥</span><span class="cm-t">CHANCE MODE</span>`
+      +`<span class="cm-st">残り${chanceLeft}</span>`
+      +`<span class="cm-rn">${chanceStreak}連</span>`;
+  }else{
+    w.hidden=true; w.innerHTML='';
+  }
+}
+
+// 1スピン分の結果レア度を受け取り、突入/継続/転落を判定
+function chanceAfter(lvl){
+  const sp=curSpec();
+  if(!chanceMode){
+    if(lvl>=sp.triggerLvl){
+      chanceMode=true; chanceStreak=1; chanceLeft=sp.stSpins;
+      renderChance(); chanceFx('enter',1);
+    }
+    return;
+  }
+  // チャンス中：この回が継続抽選に当たれば連チャン（SRは継続確定）。
+  // 外れたらST残りを1消費し、0で転落。
+  const cont=(chanceStreak<MAX_STREAK) && (lvl>=4 || Math.random()<sp.pHit);
+  if(cont){
+    chanceStreak++; chanceLeft=sp.stSpins;
+    renderChance(); chanceFx('cont',chanceStreak);
+  }else{
+    chanceLeft--;
+    if(chanceLeft<=0){
+      const fin=chanceStreak;
+      chanceMode=false; chanceLeft=0; chanceStreak=0;
+      renderChance(); chanceFx('end',fin);
+    }else{
+      renderChance();
+    }
+  }
+}
+
+// チャンスモード演出（突入／継続／終了）
+function chanceFx(kind,streak){
+  const map={
+    enter:{cls:'enter',txt:'🔥 CHANCE 突入！🔥'},
+    cont :{cls:'cont', txt:streak+'連 継続！！'},
+    end  :{cls:'end',  txt:'CHANCE 終了 ／ '+streak+'連'}
+  };
+  const m=map[kind]; if(!m) return;
+  const el=document.createElement('div');
+  el.className='chancefx '+m.cls;
+  el.innerHTML='<span class="cfbg"></span>'+m.txt;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), kind==='end'?1950:2150);
+  if(kind!=='end'){
+    heatFlash(true);
+    confettiBurst(kind==='enter'?120:70,true);
+    if(kind==='enter') coinRain(24);
+  }
+}
+
 // レバーを回した後：レア度に応じたカプセルが排出口に出てくる
 function dispenseCapsule(){
   pendingResult=preSingle||computeResult(); preSingle=null;
@@ -1259,6 +1387,7 @@ function openCapsule(){
     history.unshift({single:true,result:r});
     if(history.length>6) history.pop();
     renderHist();
+    setTimeout(()=>chanceAfter(rare.lvl),360);
   },430);
 }
 
@@ -1428,7 +1557,7 @@ function openTen(){
     setTimeout(()=>el.classList.add('opening'),i*45);
   });
   celebrate(mr,1.4);
-  setTimeout(()=>{ render10(list); recordTen(list); },620);
+  setTimeout(()=>{ render10(list); recordTen(list); setTimeout(()=>chanceAfter(mr.lvl),420); },620);
 }
 
 // 10連の結果を履歴に1件として保存
@@ -1455,7 +1584,7 @@ function render10(list){
     return `<button class="tcard" data-i="${i}" style="border-color:${rr.c};animation-delay:${i*55}ms">
       <span class="tbadge" style="background:${rr.c}">${SHORT[rr.lvl]}</span>
       <span class="tinfo">予算¥${r.budget.toLocaleString()}・${r.items.length}品
-        <span class="titems">${r.items.map(it=>it[0]).join('、')}</span></span>
+        <span class="titems">${sortItemsByCategory(r.items).map(it=>it[0]).join('、')}</span></span>
       <span class="tprice">¥${r.total.toLocaleString()} ›</span>
     </button>`;
   }).join('');
@@ -1493,18 +1622,31 @@ function showDetail(res,back){
   wireShare(()=>singleShareText(res.items,res.total,res.budget-res.total,res.budget));
 }
 
+// 食べ物のジャンル（カテゴリ）毎にまとめて並べ替え。
+// 並び順は現在の店舗メニューでの登場順（前菜→…→デザート→ドリンク）に従う
+function sortItemsByCategory(items){
+  const order=new Map();
+  activeMenu().forEach(m=>{ if(!order.has(m[2])) order.set(m[2],order.size); });
+  const rank=c=>order.has(c)?order.get(c):Number.MAX_SAFE_INTEGER;
+  return items
+    .map((it,i)=>({it,i}))
+    .sort((a,b)=>(rank(a.it[2])-rank(b.it[2]))||(a.i-b.i))
+    .map(x=>x.it);
+}
+
 // 単発結果の中身HTML（render と showDetail で共用）
 function resultInner(items,total,left,budget){
   const rare=budgetRarity(budget);
   const verd=VERDICT[rare.lvl];
   const pct=Math.min(100,Math.round(total/budget*100));
+  const sorted=sortItemsByCategory(items);
   return `
     <div style="text-align:center;font-size:10px;font-weight:900;letter-spacing:.12em;color:${rare.c}">${rare.t}</div>
     <div style="text-align:center;font-family:'Reggae One',cursive;font-size:22px;color:${rare.c};margin:1px 0 8px">予算 ¥${budget.toLocaleString()}</div>
     <div class="verdict ${verd.c}">${verd.t}</div>
     <div class="vsub">${spendNote(left)}</div>
     <ul class="items">
-      ${items.map((it,i)=>`
+      ${sorted.map((it,i)=>`
         <li style="animation-delay:${i*70}ms">
           <span class="ico">${it[3]}</span>
           <span class="nm">${it[0]}<br><span class="ct">${it[2]}</span></span>
@@ -1536,7 +1678,7 @@ function shareUrl(){ return location.origin+location.pathname; }
 function singleShareText(items,total,left,budget){
   const s=STORES[currentStore];
   const rare=budgetRarity(budget);
-  const names=items.map(it=>`${it[3]}${it[0]}`).join('\n');
+  const names=sortItemsByCategory(items).map(it=>`${it[3]}${it[0]}`).join('\n');
   return `${s.emoji}${s.short}ガチャ｜予算 ¥${budget.toLocaleString()}（${rare.t}）\n`
        + `${names}\n`
        + `合計 ¥${total.toLocaleString()}（おつり ¥${left.toLocaleString()}）\n`
@@ -1608,7 +1750,7 @@ function renderHist(){
         <span class="hp">¥${h.total.toLocaleString()} ›</span>
       </button>`
     : `<button class="hcard" data-h="${idx}">
-        <span class="hi"><b style="color:#c8102e">[予算¥${h.result.budget.toLocaleString()}]</b> ${h.result.items.map(it=>it[0]).join(' ／ ')}</span>
+        <span class="hi"><b style="color:#c8102e">[予算¥${h.result.budget.toLocaleString()}]</b> ${sortItemsByCategory(h.result.items).map(it=>it[0]).join(' ／ ')}</span>
         <span class="hp">¥${h.result.total.toLocaleString()} ›</span>
       </button>`).join('');
   el.querySelectorAll('.hcard').forEach(btn=>{
@@ -2016,7 +2158,10 @@ alctog.addEventListener('click',()=>{
 const storesw=document.getElementById('storesw');
 function applyStore(key){
   if(!STORES[key]) return;
+  const switching = key!==currentStore;
   currentStore=key;
+  // 台移動：進行中のチャンスモード（RUSH）は終了
+  if(switching && chanceMode){ chanceMode=false; chanceLeft=0; chanceStreak=0; }
   const s=STORES[key];
   const th=s.theme;
   if(th){
@@ -2036,6 +2181,7 @@ function applyStore(key){
     b.classList.toggle('on',on);
     b.setAttribute('aria-selected',on?'true':'false');
   });
+  renderRates(); renderSpec(); renderChance();
   if(!spinning) monitorIdle();   // 演出中の店舗切替ではモニタを乱さない
 }
 storesw.addEventListener('click',e=>{
@@ -2056,9 +2202,10 @@ cfSeg.addEventListener('click',e=>{
 
 // 排出率を rollBudget と同一の重み付けから算出して表示
 function renderRates(){
+  const sp=curSpec();
   const tiers={}; let sum=0;
   for(let b=1000;b<=5000;b+=100){
-    const w=Math.exp(-(b-1000)/850);   // rollBudget と同じ式
+    const w=Math.exp(-(b-1000)/sp.decay);   // rollBudget（通常時）と同じ式
     const r=budgetRarity(b);
     if(!tiers[r.lvl]) tiers[r.lvl]={lvl:r.lvl,t:r.t,c:r.c,w:0};
     tiers[r.lvl].w+=w; sum+=w;
@@ -2075,8 +2222,36 @@ function renderRates(){
     </div>`;
   }).join('');
 }
-applyStore(currentStore);
-renderRates();
+
+// 筐体スペック（突入率・確変継続率）を明記
+function renderSpec(){
+  const box=document.getElementById('specBox');
+  if(!box) return;
+  const s=STORES[currentStore], sp=curSpec();
+  const TRIG={2:'R レア',3:'RR ダブルレア',4:'SR スーパーレア'};
+  // 通常時の重みで、突入条件レア度以上を引く確率＝RUSH突入率
+  let sum=0, hit=0;
+  for(let b=1000;b<=5000;b+=100){
+    const w=Math.exp(-(b-1000)/sp.decay);
+    sum+=w;
+    if(budgetRarity(b).lvl>=sp.triggerLvl) hit+=w;
+  }
+  const enterPct=hit/sum*100;
+  const cont=continueRate(sp)*100;
+  const avg=1/(1-continueRate(sp));
+  const fmt=p=>p<1?p.toFixed(2):p.toFixed(1);
+  box.innerHTML=
+    `<div class="spec-h">🎰 ${s.short} 筐体スペック <b>${sp.type}</b></div>
+     <div class="spec-g">
+       <div><span>突入条件</span><b>${TRIG[sp.triggerLvl]||'RR'}以上</b></div>
+       <div><span>RUSH突入率</span><b>${fmt(enterPct)}%</b></div>
+       <div><span>確変・継続率</span><b class="hot">${Math.round(cont)}%</b></div>
+       <div><span>ST回数</span><b>${sp.stSpins}回</b></div>
+       <div><span>平均連チャン</span><b>約${avg.toFixed(1)}連</b></div>
+       <div><span>SR継続</span><b>確定</b></div>
+     </div>`;
+}
+applyStore(currentStore);   // 内部で renderRates / renderSpec / renderChance を実行
 renderEnergy();
 
 </script>
