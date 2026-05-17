@@ -1353,7 +1353,7 @@ function render10(list){
     return `<button class="tcard" data-i="${i}" style="border-color:${rr.c};animation-delay:${i*55}ms">
       <span class="tbadge" style="background:${rr.c}">${SHORT[rr.lvl]}</span>
       <span class="tinfo">予算¥${r.budget.toLocaleString()}・${r.items.length}品
-        <span class="titems">${r.items.map(it=>it[0]).join('、')}</span></span>
+        <span class="titems">${sortItemsByCategory(r.items).map(it=>it[0]).join('、')}</span></span>
       <span class="tprice">¥${r.total.toLocaleString()} ›</span>
     </button>`;
   }).join('');
@@ -1391,18 +1391,31 @@ function showDetail(res,back){
   wireShare(()=>singleShareText(res.items,res.total,res.budget-res.total,res.budget));
 }
 
+// 食べ物のジャンル（カテゴリ）毎にまとめて並べ替え。
+// 並び順は現在の店舗メニューでの登場順（前菜→…→デザート→ドリンク）に従う
+function sortItemsByCategory(items){
+  const order=new Map();
+  activeMenu().forEach(m=>{ if(!order.has(m[2])) order.set(m[2],order.size); });
+  const rank=c=>order.has(c)?order.get(c):Number.MAX_SAFE_INTEGER;
+  return items
+    .map((it,i)=>({it,i}))
+    .sort((a,b)=>(rank(a.it[2])-rank(b.it[2]))||(a.i-b.i))
+    .map(x=>x.it);
+}
+
 // 単発結果の中身HTML（render と showDetail で共用）
 function resultInner(items,total,left,budget){
   const rare=budgetRarity(budget);
   const verd=VERDICT[rare.lvl];
   const pct=Math.min(100,Math.round(total/budget*100));
+  const sorted=sortItemsByCategory(items);
   return `
     <div style="text-align:center;font-size:10px;font-weight:900;letter-spacing:.12em;color:${rare.c}">${rare.t}</div>
     <div style="text-align:center;font-family:'Reggae One',cursive;font-size:22px;color:${rare.c};margin:1px 0 8px">予算 ¥${budget.toLocaleString()}</div>
     <div class="verdict ${verd.c}">${verd.t}</div>
     <div class="vsub">${spendNote(left)}</div>
     <ul class="items">
-      ${items.map((it,i)=>`
+      ${sorted.map((it,i)=>`
         <li style="animation-delay:${i*70}ms">
           <span class="ico">${it[3]}</span>
           <span class="nm">${it[0]}<br><span class="ct">${it[2]}</span></span>
@@ -1434,7 +1447,7 @@ function shareUrl(){ return location.origin+location.pathname; }
 function singleShareText(items,total,left,budget){
   const s=STORES[currentStore];
   const rare=budgetRarity(budget);
-  const names=items.map(it=>`${it[3]}${it[0]}`).join('\n');
+  const names=sortItemsByCategory(items).map(it=>`${it[3]}${it[0]}`).join('\n');
   return `${s.emoji}${s.short}ガチャ｜予算 ¥${budget.toLocaleString()}（${rare.t}）\n`
        + `${names}\n`
        + `合計 ¥${total.toLocaleString()}（おつり ¥${left.toLocaleString()}）\n`
@@ -1506,7 +1519,7 @@ function renderHist(){
         <span class="hp">¥${h.total.toLocaleString()} ›</span>
       </button>`
     : `<button class="hcard" data-h="${idx}">
-        <span class="hi"><b style="color:#c8102e">[予算¥${h.result.budget.toLocaleString()}]</b> ${h.result.items.map(it=>it[0]).join(' ／ ')}</span>
+        <span class="hi"><b style="color:#c8102e">[予算¥${h.result.budget.toLocaleString()}]</b> ${sortItemsByCategory(h.result.items).map(it=>it[0]).join(' ／ ')}</span>
         <span class="hp">¥${h.result.total.toLocaleString()} ›</span>
       </button>`).join('');
   el.querySelectorAll('.hcard').forEach(btn=>{
