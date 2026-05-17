@@ -513,84 +513,87 @@ def build_saizeriya(rush):
     return sig, loop, tail
 
 
-# ---------- OHSHO: frantic minor big-band bebop (Tank!-flavored) ----------
+# ---------- OHSHO: lively town-Chinese theme "餃子日和" (user-provided) ----------
 def build_ohsho(rush):
-    bpm = 212 if rush else 184
+    # Faithful port of the user's Chinese-pentatonic piece: koto/pipa-ish
+    # pluck melody (2 phrases x 2 = 8 bars), root bass, woodblock 8ths, gong.
+    bpm = 158 if rush else 132
     beats = 4
-    bars = 4
+    bars = 8
     spb = 60.0 / bpm
-    sd = spb / 4.0
+    sd = spb / 4.0                               # 16th-note seconds
     loop = bars * beats * spb
-    tail = 1.5
+    tail = 1.6
     buf = np.zeros(int((loop + tail) * SR))
     drum = np.zeros_like(buf)
     global _TP
-    _TP = 2 if rush else 0                      # RUSH: whole-step lift
-    # Cm9 – Fm9 – Dm7b5 – G7(b9): minor ii-V-i bebop turnaround
-    chords = [
-        [-24, 0, 3, 7, 10, 14],   # Cm9
-        [-19, 3, 8, 12, 15],      # Fm9
-        [-22, 2, 5, 8, 12],       # Dm7b5
-        [-17, -1, 2, 5, 8],       # G7b9
-    ]
-    roots = [-24, -19, -22, -17]
-    scale = [0, 2, 3, 5, 6, 7, 10]              # C minor + Gb blue note
-    wb = walk_bass(roots, scale, bars, beats)
-    sw = 0.17 * sd                              # hard bebop swing on the &'s
+    _TP = 2 if rush else 0                        # RUSH: whole-step lift
 
-    # walking upright bass (swung quarters, chromatic approach)
-    for (bb, beat, semi) in wb:
-        at = bb * beats * spb + beat * spb
-        bs = osc('triangle', hz(semi), spb * 0.92) * 0.7 + osc('sine', hz(semi - 12), spb * 0.92) * 0.5
-        bs = lp_static(bs, 820)
-        bs *= adsr(len(bs), 0.006, 0.1, 0.55, 0.1, 0.55)
-        add(buf, bs * 0.4, at)
-    # big-band brass section: punchy syncopated shots
-    shots = [0, 3, 6, 10, 12, 14] if not rush else [0, 2, 3, 6, 8, 10, 12, 14]
+    NOTE = {'C4': 0, 'D4': 2, 'E4': 4, 'G4': 7, 'A4': 9,
+            'C5': 12, 'D5': 14, 'E5': 16, 'G5': 19, 'A5': 21, 'C6': 24}
+    BASS = {'C3': -12, 'A3': -3, 'F3': -7, 'G3': -5}
+    phraseA = [('G5', 2), ('A5', 2), ('G5', 1), ('E5', 1), ('D5', 2),
+               ('E5', 2), ('G5', 2), ('A5', 2), ('C6', 2),
+               ('A5', 1), ('G5', 1), ('E5', 2), ('D5', 2), ('C5', 2),
+               ('D5', 2), ('E5', 2), ('G5', 4)]
+    phraseB = [('E5', 2), ('D5', 1), ('C5', 1), ('D5', 2), ('E5', 2),
+               ('G5', 2), ('A5', 2), ('G5', 2), ('E5', 2),
+               ('D5', 1), ('E5', 1), ('G5', 2), ('A5', 2), ('G5', 2),
+               ('E5', 2), ('D5', 2), ('C5', 4)]
+    seq = phraseA + phraseB                       # 64 sixteenths = 4 bars
+    bass_bars = ['C3', 'C3', 'A3', 'A3', 'F3', 'F3', 'G3', 'G3']  # 8 bars
+
+    def koto(semi, dur, amp):
+        n = int(round(dur * SR)); tt = np.arange(n) / SR
+        f = hz(semi)
+        y = osc('triangle', f, dur) + osc('sine', f * 2.01, dur) * 0.3
+        if semi >= 12:                            # octave-down body for highs
+            y += osc('sine', f / 2, dur) * 0.36
+        env = np.exp(-tt * 3.4) * (1 - np.exp(-tt * 260))
+        return y * env * amp
+
+    def woodblock(at, accent):
+        f0 = 1400 if accent else 1000
+        n = int(round(0.09 * SR)); tt = np.arange(n) / SR
+        y = osc('square', f0, 0.09) * np.exp(-tt * 60)
+        y += osc('square', f0 * 0.6, 0.09) * np.exp(-tt * 90) * 0.5
+        add(drum, y * (0.13 if accent else 0.07), at)
+
+    def gong(at):
+        nz = noise(1.2)
+        ei = np.arange(len(nz)) / len(nz)
+        nz = nz * np.power(np.clip(1 - ei, 0, 1), 1.5)
+        nz = hp_static(lp_static(nz, 620), 240)   # ~bandpass around the gong
+        add(drum, nz * 0.12, at)
+
+    # melody (two passes of the 4-bar phrase set -> 8-bar loop)
+    for rep in (0, 1):
+        pos = rep * 64
+        for note, ln in seq:
+            at = pos * sd
+            dur = ln * sd * 0.95
+            semi = NOTE[note]
+            add(buf, koto(semi, dur, 0.42), at)
+            pos += ln
+    # root bass on beat 1 & 3 of each bar
     for b in range(bars):
         bt = b * beats * spb
-        ch = chords[b % 4]
-        for st in shots:
-            at = bt + st * sd + (sw if st % 2 else 0)
-            for k, semi in enumerate(ch[1:]):
-                add(buf, brass(hz(semi), 0.16 if st % 4 else 0.26,
-                               amp=0.07 * (1.0 if k == 0 else 0.8), bright=1.0), at)
-    # bebop lead: fast swung lines, chromatic leaps, climactic peaks
-    mel = melody(chords, scale, bars, beats, sd, 0, 2, 77 + rush,
-                 density=0.8, octave=1 if rush else 0)
-    for (st, dn, semi) in mel:
-        at = st * sd + (sw if st % 2 else 0)
-        dur = dn * sd * 0.85
-        sig = brass(hz(semi), dur, amp=0.42, bright=1.1)
-        sig *= adsr(len(sig), 0.006, 0.05, 0.7, 0.07, 0.65)
-        add(buf, sig * 0.34, at)
-    # saxy contrary counter line
-    for (st, dn, semi) in counter(mel, chords, scale, beats, bars):
-        at = st * sd + (sw if st % 2 else 0)
-        dur = dn * sd * 0.8
-        cs = osc('saw', hz(semi), dur, detune=-5) * 0.5 + osc('saw', hz(semi), dur, detune=5) * 0.5
-        cs = lp_static(cs, 2600, 1.0)
-        cs *= adsr(len(cs), 0.01, 0.06, 0.5, 0.07, 0.5)
-        add(buf, cs * 0.055, at)
-    # swung jazz kit: ride pattern, snare comping, feathered kick, shots
+        semi = BASS[bass_bars[b % 8]]
+        for off in (0, 2 * spb):                  # beats 1 and 3
+            n = int(round(spb * 1.75 * SR)); tt = np.arange(n) / SR
+            bs = osc('sine', hz(semi), spb * 1.75) * (1 - np.exp(-tt * 130)) * np.exp(-tt * 2.0)
+            bs += osc('triangle', hz(semi), spb * 1.75) * 0.25 * np.exp(-tt * 3.0)
+            add(buf, bs * 0.32, bt + off)
+    # percussion: woodblock every 8th (accent on the beat), gong at bars 0 & 4
+    total = bars * beats * 4
+    for s in range(0, total, 2):
+        woodblock(s * sd, (s % 8 == 0))
     for b in range(bars):
-        bt = b * beats * spb
-        for beat in range(beats):
-            at = bt + beat * spb
-            add(drum, kick(0.2, 150, 46, amp=0.28, click=0.1), at)        # feather
-            add(drum, hat(amp=0.13, open_=False), at)                     # ride "ding"
-            add(drum, hat(amp=0.1, open_=False), at + 2 * sd + sw)        # "da"
-        add(drum, snare(0.16, amp=0.42), bt + spb)                        # comp 2
-        add(drum, snare(0.16, amp=0.42), bt + 3 * spb)                    # comp 4
-        if b % 2 == 1:
-            add(drum, snare(0.12, amp=0.18), bt + 2 * spb + 2 * sd + sw)  # ghost
-        if rush:
-            add(drum, clap(0.4), bt + spb)
-            add(drum, clap(0.4), bt + 3 * spb)
-            add(drum, kick(0.22, 150, 46, amp=0.3, click=0.1), bt + 2 * spb)
+        if b % 4 == 0:
+            gong(b * beats * spb)
     sig = buf + drum
-    sig = delay(sig, sd * 3, 0.14, 0.08)
-    sig = reverb(sig, mix=0.12, decay=0.32)      # tight big-band room
+    sig = delay(sig, sd * 3, 0.16, 0.1)
+    sig = reverb(sig, mix=0.14, decay=0.34)       # lively diner room
     return sig, loop, tail
 
 
