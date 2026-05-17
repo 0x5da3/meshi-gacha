@@ -2439,7 +2439,8 @@ function clip(id){
   const def=CLIPS[id]; if(!def) return;
   let ctx; try{ ctx=AC(); }catch(e){ return; }
   if(!ctx) return;
-  try{ if(ctx.state==='suspended') ctx.resume(); }catch(e){}
+  // iOS では 'suspended' に加え 'interrupted' で停止していることがある
+  try{ if(ctx.state!=='running') ctx.resume(); }catch(e){}
   try{ def.b(ctx); }catch(e){}
 }
 function applyMasterVolume(){
@@ -3307,13 +3308,12 @@ async function runSlot(lvl){
       if(stopBtns[i]){ stopBtns[i].classList.add('done'); stopBtns[i].disabled=true; }
       if(reelFaceEls[i]) reelFaceEls[i].textContent=targets[i];
       if(reelEls[i]){ reelEls[i].classList.remove('spinning'); reelEls[i].classList.add('stop'); }
-      // ② 音／モニタ更新は次フレームへ回し、ボタン描画を先に通す
-      const after=()=>{
-        try{ clip('rattle'); }catch(e){}
-        applyMonBeat(beats[myPress]);
-      };
-      if(typeof requestAnimationFrame==='function') requestAnimationFrame(after);
-      else setTimeout(after,0);
+      // ② 音はユーザージェスチャー直下で即発火（rAF へ回すと環境により無音化する）
+      try{ clip('rattle'); }catch(e){}
+      // モニタ更新はわずかに遅延させて、ボタン描画を先に通す
+      const beat=beats[myPress];
+      if(typeof requestAnimationFrame==='function') requestAnimationFrame(()=>applyMonBeat(beat));
+      else applyMonBeat(beat);
       if(stopped.every(Boolean)){
         slotPending=null;
         resolve();
