@@ -912,7 +912,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <div class="ver">v0.11.0</div>
+      <div class="ver">v0.11.1</div>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -1410,6 +1410,7 @@ try{
 const BUDGET_MIN=1000, BUDGET_MAX=5000;
 function budgetStep(){ return budgetMode==='rich'?1000:500; }
 let mustOpen=false;        // 未開封ロック中フラグ
+let awaitingOpen=false;    // カプセル排出済み・未開封フラグ（店舗切替を禁止）
 const ENERGY_MAX=10;
 
 // ===== パチンコ風 チャンスモード（確変ST RUSH）=====
@@ -1635,11 +1636,12 @@ function renderCapsuleView(){
     </div>`;
   screen.classList.remove('show');void screen.offsetWidth;screen.classList.add('show');
   document.getElementById('bigcap').addEventListener('click',openCapsule,{once:true});
+  awaitingOpen=true;
 }
 
 // カプセルをタップ → 開封して結果表示（レア度でリッチに）
 function openCapsule(){
-  mustOpen=false;
+  mustOpen=false; awaitingOpen=false;
   const r=pendingResult;
   const rare=budgetRarity(r.budget);
   clip(rare.lvl>=4?'winBig':rare.lvl>=2?'win':'open');
@@ -1808,10 +1810,11 @@ function dispenseTen(){
     </div>`;
   screen.classList.remove('show');void screen.offsetWidth;screen.classList.add('show');
   document.getElementById('openall').addEventListener('click',openTen,{once:true});
+  awaitingOpen=true;
 }
 
 function openTen(){
-  mustOpen=false;
+  mustOpen=false; awaitingOpen=false;
   const list=pendingTen;
   const mr=maxRareOf(list);
   clip(mr.lvl>=4?'tenWinBig':mr.lvl>=2?'tenWin':'tenOpen');
@@ -3286,6 +3289,8 @@ function syncSlotLockDefault(){
 storesw.addEventListener('click',e=>{
   const b=e.target.closest('.ssbtn');
   if(!b||b.classList.contains('on')) return;
+  // スロット/ガチャ実行中、またはカプセル未開封の間は店舗切替を禁止
+  if(spinning||awaitingOpen){ if(awaitingOpen) flashLock(); return; }
   applyStore(b.dataset.store);
 });
 
