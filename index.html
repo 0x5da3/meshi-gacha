@@ -175,22 +175,66 @@
       0 0 18px rgba(255,200,60,.7), 0 4px 0 var(--rosso-dark);
   }
 
-  /* ---- slot machine (3 reels) ---- */
+  /* ---- slot machine (3 reels + stop buttons + start) ---- */
   .slot{
-    position:relative;z-index:1;height:106px;margin-bottom:12px;
-    display:flex;gap:6px;align-items:center;justify-content:center;
+    position:relative;z-index:1;margin-bottom:12px;
+    gap:6px;
     background:linear-gradient(180deg,#1a0a14,#3a0a18 60%,#1a0a14);
-    border:4px solid var(--rosso-dark);border-radius:14px;padding:8px 10px;
+    border:4px solid var(--rosso-dark);border-radius:14px;padding:8px 10px 10px;
     box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),
       inset 0 9px 22px rgba(0,0,0,.62), 0 4px 0 var(--rosso-dark);
   }
+  .slot .reels{display:flex;gap:6px;justify-content:center;height:86px}
   .slot .reel{
-    flex:1;height:82px;border-radius:9px;
+    flex:1;height:86px;border-radius:9px;
     background:linear-gradient(180deg,#fff 0%,#f4f8ff 60%,#dbe3ee 100%);
     border:3px solid #1c1f2e;
     box-shadow:inset 0 -8px 0 rgba(0,0,0,.13), inset 0 7px 0 rgba(255,255,255,.65),
       inset 0 0 0 2px rgba(0,0,0,.08);
     display:grid;place-items:center;overflow:hidden;position:relative;
+  }
+  .slot .stops{display:flex;gap:6px;margin-top:8px}
+  .stopbtn{
+    flex:1;height:32px;border:0;border-radius:8px;cursor:pointer;position:relative;
+    background:linear-gradient(180deg,#ffffff,#cfd6e2);color:#1a1d28;
+    font-family:"Reggae One",cursive;font-size:13px;letter-spacing:.04em;
+    box-shadow:0 3px 0 #5a6072, inset 0 1px 0 rgba(255,255,255,.7);
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .08s, box-shadow .08s, background .18s;
+  }
+  .stopbtn:not(:disabled):active{transform:translateY(2px);box-shadow:0 1px 0 #5a6072}
+  .stopbtn:disabled{opacity:.45;cursor:not-allowed}
+  .stopbtn.done{background:linear-gradient(180deg,#ffd23f,#e6a417);color:#3a1500;box-shadow:0 3px 0 #8a5a00, inset 0 1px 0 rgba(255,255,255,.55)}
+  .orderbadge{
+    display:none;position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+    background:var(--rosso);color:#fff;font-size:10px;padding:1px 7px;border-radius:99px;
+    font-family:"Reggae One",cursive;letter-spacing:0;box-shadow:0 1px 0 rgba(0,0,0,.4);
+  }
+  .machine.chance .orderbadge:not(:empty){display:inline-block}
+  .slotstart{
+    margin-top:8px;height:36px;border:0;border-radius:9px;cursor:pointer;
+    background:linear-gradient(180deg,#ff5b6e,#c2122c);color:#fff;width:100%;
+    font-family:"Reggae One",cursive;font-size:14px;letter-spacing:.05em;
+    box-shadow:0 3px 0 #7a0a1a, inset 0 1px 0 rgba(255,255,255,.4);
+    transition:transform .08s, box-shadow .08s, opacity .12s;
+  }
+  .slotstart:not(:disabled):active{transform:translateY(2px);box-shadow:0 1px 0 #7a0a1a}
+  .slotstart:disabled{opacity:.5;cursor:not-allowed}
+  .ordermiss{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);
+    background:rgba(255,40,80,.95);color:#fff;
+    padding:6px 14px;border-radius:99px;font-family:"Reggae One",cursive;
+    font-size:13px;letter-spacing:.04em;pointer-events:none;
+    opacity:0;z-index:6;text-shadow:0 1px 2px rgba(0,0,0,.6);
+    box-shadow:0 4px 14px rgba(0,0,0,.45);
+  }
+  .ordermiss.on{animation:ordMissAn 1.2s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes ordMissAn{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+    15%{opacity:1;transform:translate(-50%,-50%) scale(1.12)}
+    30%{transform:translate(-50%,-50%) scale(1)}
+    85%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(.95)}
   }
   .slot .reel::before{
     content:"";position:absolute;left:0;right:0;top:50%;height:30px;
@@ -226,8 +270,9 @@
   /* mode visibility */
   .machine .slot{display:none}
   .machine.mode-gacha .monitor{display:none}
-  .machine.mode-slot  .monitor{display:none}
-  .machine.mode-slot  .slot{display:flex}
+  .machine.mode-slot  .slot{display:flex;flex-direction:column}
+  .machine.mode-slot  .dome{display:none}
+  .machine.mode-slot  .crank{display:none}
 
   .capsules{position:absolute;inset:0}
   .cap{
@@ -623,7 +668,7 @@
     .monitor.heat,.mon-anim .mon-emoji,.mon-anim .mon-cap,
     .mon-stage.reach .mon-cap,.mon-flash.on{animation:none}
     .slot .reel.spinning .slot-face,.slot .reel.stop .slot-face,
-    .slot-flash.on,.slot.win{animation:none}
+    .slot-flash.on,.slot.win,.ordermiss.on{animation:none}
   }
 
   /* ---- alcohol on/off toggle ---- */
@@ -849,9 +894,27 @@
       <div class="mon-flash" id="monFlash"></div>
     </div>
     <div class="slot" id="slot" aria-hidden="true">
-      <div class="reel" id="reel0"><span class="slot-face">🎰</span></div>
-      <div class="reel" id="reel1"><span class="slot-face">🎰</span></div>
-      <div class="reel" id="reel2"><span class="slot-face">🎰</span></div>
+      <div class="reels">
+        <div class="reel" id="reel0"><span class="slot-face">🎰</span></div>
+        <div class="reel" id="reel1"><span class="slot-face">🎰</span></div>
+        <div class="reel" id="reel2"><span class="slot-face">🎰</span></div>
+      </div>
+      <div class="stops">
+        <button class="stopbtn" data-reel="0" disabled aria-label="左リール停止">
+          <span class="orderbadge" id="ord0"></span>
+          <span class="stoplabel">STOP</span>
+        </button>
+        <button class="stopbtn" data-reel="1" disabled aria-label="中リール停止">
+          <span class="orderbadge" id="ord1"></span>
+          <span class="stoplabel">STOP</span>
+        </button>
+        <button class="stopbtn" data-reel="2" disabled aria-label="右リール停止">
+          <span class="orderbadge" id="ord2"></span>
+          <span class="stoplabel">STOP</span>
+        </button>
+      </div>
+      <button class="slotstart" id="slotstart">▶ SPIN</button>
+      <div class="ordermiss" id="orderMiss" aria-hidden="true">押し順ミス！継続率ダウン</div>
       <div class="slot-flash" id="slotFlash"></div>
     </div>
     <div class="dome"><div class="capsules" id="caps"></div></div>
@@ -938,13 +1001,13 @@ const STORES = {
     spec: { type:'ノーマル機', decay:850, boost:1200, triggerLvl:3, stSpins:8, pHit:0.083 },
     story: {
       tag:'SAIZE STORY',
-      idle:['🍝','本日のまかない、なに出る？'],
-      intro:['👨‍🍳','コックさん、厨房に立つ'],
-      journey:[['🍅','畑直送トマト 入荷！'],['🧀','とろけるチーズ 用意OK']],
-      reach:['🐌','鉄板エスカルゴ 登場…リーチ！'],
-      super:['🔥','オーブン全開ッ スーパーリーチ！！'],
-      miss:['🍽️','やさしい一皿。ごちそうさま'],
-      win:['🍷','まかない大宴会 完成ッ 大当たり！！']
+      idle:['🍝','今日のサイゼ、何頼む？'],
+      intro:['📖','メニュー、めくる'],
+      journey:[['🍅','トマト系で攻める？'],['🧀','チーズ盛りも捨てがたい']],
+      reach:['🐌','まさかの エスカルゴ…リーチ！'],
+      super:['🔥','ドリア＆ワイン スーパーリーチ！！'],
+      miss:['🍽️','落ち着いた一皿で締め'],
+      win:['🍷','テーブル満卓ッ 大当たり！！']
     },
     menu: [
       // [name, price, category, icon, isMain, isDessert, isDrink/alcohol]
@@ -1427,7 +1490,10 @@ function chanceAfter(lvl){
   }
   // チャンス中：この回が継続抽選に当たれば連チャン（SRは継続確定）。
   // 外れたらST残りを1消費し、0で転落。
-  const cont=(chanceStreak<MAX_STREAK) && (lvl>=4 || Math.random()<sp.pHit);
+  // スロットで押し順ミスした場合は pHit を半分に
+  let pHit = sp.pHit;
+  if(chanceOrderPenalty){ pHit *= 0.5; chanceOrderPenalty = false; }
+  const cont=(chanceStreak<MAX_STREAK) && (lvl>=4 || Math.random()<pHit);
   if(cont){
     chanceStreak++; chanceLeft=sp.stSpins;
     renderChance(); chanceFx('cont',chanceStreak);
@@ -2182,7 +2248,17 @@ let spinning=false;
 // モード別の演出尺。効果音はこの長さに合わせて伸ばす
 function modeAnimMs(lvl){
   if(typeof monReduced==='function' && monReduced()) return 520;
-  if(appMode==='slot') return 700 + (lvl|0)*260;       // slotMs と一致
+  if(appMode==='slot'){
+    // モニタ昇格演出の尺に合わせる（スロット側の停止は手動なので別管理）
+    let d=520+520;                       // intro + journey0
+    if(lvl>=1) d+=520;
+    if(lvl>=2) d+=900;
+    if(lvl>=3) d+=980;
+    if(lvl>=4) d+=760+1080;
+    else if(lvl===3) d+=760;
+    else d+=680;
+    return d;
+  }
   // ガチャ：モニタなし、ドームのコロコロ感だけで短く
   return 680;
 }
@@ -2293,44 +2369,88 @@ function slotTargets(lvl){
   const shuf=pool.slice().sort(()=>Math.random()-0.5);
   return [shuf[0],shuf[1],shuf[2]];
 }
+const stopBtns=[document.querySelector('.stopbtn[data-reel="0"]'),document.querySelector('.stopbtn[data-reel="1"]'),document.querySelector('.stopbtn[data-reel="2"]')];
+const orderBadges=[document.getElementById('ord0'),document.getElementById('ord1'),document.getElementById('ord2')];
+const slotstartBtn=document.getElementById('slotstart');
+const orderMissEl=document.getElementById('orderMiss');
+
+let slotPending=null;           // {stopReel(i)} 中はクリックで停止
+let chanceOrderPenalty=false;   // 押し順ミス → chanceAfter で pHit を半減
+
 function slotIdle(){
   if(!reelFaceEls[0]) return;
   const pool=slotPool();
   reelFaceEls.forEach((f,i)=>{ if(f) f.textContent=pool[i%pool.length]; });
   reelEls.forEach(r=>r&&r.classList.remove('spinning','stop'));
+  stopBtns.forEach(b=>{ if(b){ b.classList.remove('done'); b.disabled=true; } });
+  setOrderBadges(null);
   if(slotEl) slotEl.classList.remove('win');
 }
-function slotMs(lvl){
-  if(monReduced()) return 520;
-  return 700 + lvl*260;            // 700..1740ms
+
+function makePressOrder(){
+  const a=[0,1,2];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
 }
+function setOrderBadges(order){
+  if(!orderBadges[0]) return;
+  if(!order){ orderBadges.forEach(b=>b&&(b.textContent='')); return; }
+  // order = [reel,reel,reel] in press order. badge under reel shows its rank.
+  const rank={};
+  order.forEach((r,i)=>{ rank[r]=i+1; });
+  orderBadges.forEach((b,i)=>{ if(b) b.textContent = String(rank[i]||''); });
+}
+function showOrderMiss(){
+  if(!orderMissEl) return;
+  orderMissEl.classList.remove('on'); void orderMissEl.offsetWidth; orderMissEl.classList.add('on');
+}
+
 async function runSlot(lvl){
   if(!slotEl||!reelFaceEls[0]) return;
   slotEl.classList.remove('win');
   const targets=slotTargets(lvl);
   const pool=slotPool();
+  const orderTarget = chanceMode ? makePressOrder() : null;
+  setOrderBadges(orderTarget);
+  const orderActual=[];
+
   if(monReduced()){
     reelFaceEls.forEach((f,i)=>{ if(f) f.textContent=targets[i]; });
     if(lvl>=3 && slotEl) slotEl.classList.add('win');
+    chanceOrderPenalty=false;     // reduced-motion はミス判定なし
+    setOrderBadges(null);
     await sleep(520); return;
   }
+
   reelEls.forEach(r=>{ r.classList.remove('stop'); r.classList.add('spinning'); });
+  stopBtns.forEach(b=>{ if(b){ b.classList.remove('done'); b.disabled=false; } });
+
   // スピン中はランダム絵柄を高速で差し替え
   const tickers=reelFaceEls.map(f=>setInterval(()=>{
     if(f) f.textContent=pool[Math.floor(Math.random()*pool.length)];
   },70));
-  const stopAt=[680, 1020, 1380+lvl*120];   // 左→中→右の順に停止
-  const start=performance.now();
-  for(let i=0;i<3;i++){
-    const wait=stopAt[i]-(performance.now()-start);
-    if(wait>0) await sleep(wait);
-    clearInterval(tickers[i]);
-    if(reelFaceEls[i]) reelFaceEls[i].textContent=targets[i];
-    reelEls[i].classList.remove('spinning');
-    reelEls[i].classList.add('stop');
-    try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); rattleHit(ctx,ctx.currentTime,0.22); }catch(e){}
-  }
+
+  await new Promise(resolve=>{
+    const stopped=[false,false,false];
+    const stopReel=(i)=>{
+      if(stopped[i]) return;
+      stopped[i]=true;
+      orderActual.push(i);
+      clearInterval(tickers[i]);
+      if(reelFaceEls[i]) reelFaceEls[i].textContent=targets[i];
+      if(reelEls[i]){ reelEls[i].classList.remove('spinning'); reelEls[i].classList.add('stop'); }
+      if(stopBtns[i]){ stopBtns[i].classList.add('done'); stopBtns[i].disabled=true; }
+      try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); rattleHit(ctx,ctx.currentTime,0.22); }catch(e){}
+      if(stopped.every(Boolean)){
+        slotPending=null;
+        resolve();
+      }
+    };
+    slotPending={ stopReel };
+  });
+
   await sleep(220);
+
   const win = targets[0]===targets[1] && targets[1]===targets[2];
   if(win){
     if(slotEl){ slotEl.classList.add('win'); }
@@ -2338,7 +2458,26 @@ async function runSlot(lvl){
     try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); fanfare(ctx,ctx.currentTime+0.02,Math.min(4,lvl)); }catch(e){}
     await sleep(420);
   }
+
+  // 押し順チェック（チャンスモード時のみ）
+  if(orderTarget){
+    const correct = orderTarget.every((r,i)=>orderActual[i]===r);
+    chanceOrderPenalty = !correct;
+    if(!correct) showOrderMiss();
+  }else{
+    chanceOrderPenalty = false;
+  }
+  setOrderBadges(null);
 }
+
+// 停止ボタン／START ボタンの配線
+stopBtns.forEach((b,i)=>{
+  if(!b) return;
+  b.addEventListener('click',()=>{
+    if(slotPending) slotPending.stopReel(i);
+  });
+});
+if(slotstartBtn) slotstartBtn.addEventListener('click',startGacha);
 
 function startGacha(){
   if(spinning) return;
@@ -2359,12 +2498,17 @@ function startGacha(){
   safeSound(tenMode,lvl);
   crank.classList.add('turning');
   crank.disabled=true;
+  if(slotstartBtn) slotstartBtn.disabled=true;
   machine.classList.add('rolling');
   setTimeout(()=>machine.classList.remove('rolling'),520);
   (async()=>{
     try{
-      if(appMode==='slot') await runSlot(lvl);
-      else                 await sleep(modeAnimMs(lvl));   // ガチャ：モニタ無し
+      if(appMode==='slot'){
+        await runMonitor(lvl);          // スロット時もモニタ演出を流す
+        await runSlot(lvl);             // 続いてリール停止操作へ
+      }else{
+        await sleep(modeAnimMs(lvl));   // ガチャ：モニタ無し
+      }
     }catch(e){ console.error(e); }
     crank.classList.remove('turning');
     try{
@@ -2378,8 +2522,10 @@ function startGacha(){
       }
     }catch(e){ console.error(e); }
     if(appMode!=='slot') monitorIdle();   // スロットは結果を次回まで残す
+    else monitorIdle();                   // スロット時はモニタも idle に戻す
     spinning=false;
     crank.disabled=false;
+    if(slotstartBtn) slotstartBtn.disabled=false;
   })();
 }
 
@@ -2404,6 +2550,7 @@ function applyMode(m){
 }
 modesw.addEventListener('click',e=>{
   const b=e.target.closest('.msbtn'); if(!b) return;
+  if(spinning) return;        // スピン中のモード切替は禁止
   applyMode(b.dataset.mode);
 });
 applyMode(appMode);
