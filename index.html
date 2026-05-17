@@ -1020,6 +1020,14 @@
   </footer>
 </div>
 
+<!-- iOS の画面収録(ReplayKit)は Web Audio 直出力を録れないため、効果音を
+     MediaStream 経由でこの <audio> から鳴らし「メディア音声」として収録対象にする。
+     さらに無音ループでオーディオセッションを収録向きに維持する。 -->
+<audio id="capAudio" playsinline style="display:none"></audio>
+<audio id="silentKeep" loop playsinline preload="auto" style="display:none"
+  src="data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=">
+</audio>
+
 <script>
 const STORES = {
   saizeriya: {
@@ -2010,16 +2018,52 @@ function renderHist(){
 const machine=document.getElementById('machine');
 
 /* ---- 効果音（Web Audio で「ガラガラ」を合成）---- */
-let actx, masterGain;
+let actx, masterGain, streamDest, capAudioEl, directOut=false;
 function AC(){
   if(!actx){
     actx = new (window.AudioContext||window.webkitAudioContext)();
     masterGain = actx.createGain();
     masterGain.gain.value = soundMuted ? 0 : soundVolume;
-    masterGain.connect(actx.destination);
+    capAudioEl = document.getElementById('capAudio');
+    // iOS の画面収録(ReplayKit)は Web Audio の直出力を録れない。
+    // 出力を MediaStream 経由で <audio> 要素から鳴らすと「メディア音声」
+    // 扱いになり収録対象になる。play() 失敗時のみスピーカー直結に保険。
+    let viaMedia=false;
+    try{
+      if(capAudioEl && typeof actx.createMediaStreamDestination==='function'){
+        streamDest = actx.createMediaStreamDestination();
+        masterGain.connect(streamDest);
+        capAudioEl.srcObject = streamDest.stream;
+        capAudioEl.muted = false;
+        const p = capAudioEl.play();
+        if(p && p.catch) p.catch(()=>ensureDirectOut());
+        viaMedia=true;
+      }
+    }catch(e){ viaMedia=false; }
+    if(!viaMedia){ masterGain.connect(actx.destination); directOut=true; }
   }
   return actx;
 }
+// MediaStream 再生が不可だった場合の保険：端末スピーカーには必ず出す
+function ensureDirectOut(){
+  if(directOut || !masterGain || !actx) return;
+  try{ masterGain.connect(actx.destination); directOut=true; }catch(e){}
+}
+// 最初のユーザー操作で AudioContext を起こし、収録用 <audio> を再生開始。
+// 無音ループでオーディオセッションを収録向きに保持する（画面ロック対策にも）。
+let audioUnlocked=false;
+function unlockAudio(){
+  try{
+    const ctx=AC();
+    if(ctx.state==='suspended') ctx.resume();
+    const sk=document.getElementById('silentKeep');
+    if(sk){ const ps=sk.play(); if(ps&&ps.catch) ps.catch(()=>{}); }
+    if(capAudioEl && !directOut){ const pc=capAudioEl.play(); if(pc&&pc.catch) pc.catch(()=>{}); }
+    audioUnlocked=true;
+  }catch(e){}
+}
+['pointerdown','touchend','click','keydown'].forEach(ev=>
+  window.addEventListener(ev,unlockAudio,{passive:true}));
 function masterOut(ctx){ return masterGain || ctx.destination; }
 function applyMasterVolume(){
   if(!masterGain || !actx) return;
