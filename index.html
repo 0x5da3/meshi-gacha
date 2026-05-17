@@ -2118,36 +2118,45 @@ function unlockAudio(){
    音は必ず masterOut(ctx) 経由＝ミュート/音量に追従し iOS 画面収録にも乗る。
    semitone は C4(261.63Hz) からの半音オフセット。null=休符。負値=低オクターブ。 */
 const BGM_BASE=261.63;
+/* 各トラック：32ステップ(2小節/16分)。prog=8ステップごとのコード(半音集合)、
+   bass=グルーヴ低音、lead=メロディ、kick/snare/hat=ドラム。RUSH は同じ
+   キー/進行のままエンジン側でテンポ↑・1オクターブ上・四つ打ち化して盛る。 */
 const BGM_TRACKS={
-  saizeriya:{ // 陽気なイタリアン（メジャー・跳ねるワルツ調）
-    bpm:112, rbpm:152, leadWave:'triangle', bassWave:'sine', rleadWave:'square',
-    nbass:[-12,null,null,null, -5,null,null,null, -3,null,null,null, -7,null,null,null],
-    nlead:[ 12,null, 16,  19, 16,null, 12,null, 14,null, 17,  21, 19,null, 12,null],
-    rbass:[-12,null,-12,null, -5,null, -5,null, -3,null, -3,null, -7,null, -7,null],
-    rlead:[ 24, 19, 16, 12,   19, 16, 12, 16, 21, 17, 14, 17, 19, 16, 12, 24],
-    kick :[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
-    hat  :[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0] },
-  ohsho:{ // 勢いある中華（メジャー・ペンタトニック）
-    bpm:126, rbpm:168, leadWave:'square', bassWave:'triangle', rleadWave:'sawtooth',
-    nbass:[-12,null,null,-12, -5,null,null,null, -12,null,null,-12, -5,null,-7,null],
-    nlead:[ 12, 14, 16, 19,  21, 19, 16, 14,  12, 14, 16, 21,  19, 16, 12,null],
-    rbass:[-12,-12,-5,-5, -12,-12,-7,-7, -12,-12,-5,-5, -7,-7,-5,-5],
-    rlead:[ 24, 21, 19, 16, 19, 21, 24, 21, 16, 19, 21, 24, 21, 19, 16, 12],
-    kick :[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],
-    hat  :[0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1] },
-  cocoichi:{ // スパイシー・エスニック（フリジアン風・ドローン）
-    bpm:104, rbpm:142, leadWave:'sawtooth', bassWave:'sine', rleadWave:'square',
-    nbass:[-12,null,null,null, -12,null,null,null, -12,null,null,null, -12,null,-11,null],
-    nlead:[  0,  1,  3,  5,   7,  5,  3,  1,   8,  7,  5,  3,   5,  3,  1,  0],
-    rbass:[-12,null,-12,null, -12,null,-12,null, -12,null,-12,null, -12,-12,-11,-11],
-    rlead:[ 12, 13, 15, 17,  19, 17, 15, 13,  20, 19, 17, 15,  13, 15, 13, 12],
-    kick :[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],
-    hat  :[0,1,1,0,1,1,0,1,0,1,1,0,1,1,0,1] }
+  saizeriya:{ // 上品なボサ/カフェ（Cメジャー7th, スウィング）
+    bpm:96, rbpm:132, leadWave:'triangle', bassWave:'sine', padWave:'sine',
+    prog:[[0,4,7],[-3,0,4],[2,5,9],[-1,2,5]],
+    bass:[-12,null,null,-12,null,null,-5,null, -15,null,null,-15,null,null,-8,null,
+          -10,null,null,-10,null,null,-3,null, -17,null,null,-17,null,null,-10,null],
+    lead:[7,null,11,null,12,null,null,9, 7,null,4,null,null,9,7,null,
+          9,null,12,null,14,null,9,null, 11,null,7,null,5,null,2,null],
+    kick:[1,0,0,1,0,0,1,0, 1,0,0,1,0,0,1,0, 1,0,0,1,0,0,1,0, 1,0,0,1,0,0,1,0],
+    snare:[0,0,0,0,1,0,0,0, 0,0,0,0,1,0,0,0, 0,0,0,0,1,0,0,0, 0,0,0,0,1,0,0,0],
+    hat:[1,0,2,0,1,0,2,0, 1,0,2,0,1,0,2,0, 1,0,2,0,1,0,2,0, 1,0,2,0,1,0,2,0] },
+  ohsho:{ // 勢いある中華ファンク（Cメジャー・ペンタ）
+    bpm:124, rbpm:164, leadWave:'square', bassWave:'triangle', padWave:'triangle',
+    prog:[[0,4,7],[5,9,12],[7,11,14],[0,4,7]],
+    bass:[-12,null,-12,0,null,-5,null,-12, -7,null,-7,5,null,0,null,-7,
+          -5,null,-5,7,null,2,null,-5, -12,null,-12,0,null,7,null,-12],
+    lead:[12,14,16,null,19,null,16,14, 17,null,16,14,12,null,14,null,
+          19,null,21,19,16,null,14,null, 12,16,19,16,14,12,null,null],
+    kick:[1,0,0,0,1,0,1,0, 1,0,0,0,1,0,1,0, 1,0,0,0,1,0,1,0, 1,0,0,0,1,0,1,0],
+    snare:[0,0,0,0,1,0,0,1, 0,0,0,0,1,0,0,0, 0,0,0,0,1,0,0,1, 0,0,0,0,1,0,0,0],
+    hat:[1,1,2,1,1,1,2,1, 1,1,2,1,1,1,2,1, 1,1,2,1,1,1,2,1, 1,1,2,1,1,1,2,1] },
+  cocoichi:{ // 妖しいエスニック（Cフリジアン・催眠グルーヴ）
+    bpm:100, rbpm:138, leadWave:'sawtooth', bassWave:'sawtooth', padWave:'sawtooth',
+    prog:[[0,3,7],[0,3,7],[1,5,8],[0,3,7]],
+    bass:[-12,null,null,-12,-12,null,null,-11, -12,null,null,-12,-12,null,-9,null,
+          -11,null,null,-11,-11,null,null,-12, -12,null,-12,null,-12,-12,-11,null],
+    lead:[7,null,8,7,5,null,3,null, 3,null,5,3,1,null,0,null,
+          8,null,7,5,7,null,8,null, 5,null,3,1,0,null,null,null],
+    kick:[1,0,0,0,0,0,1,0, 1,0,0,0,0,0,1,0, 1,0,0,0,0,0,1,0, 1,0,0,0,0,0,1,0],
+    snare:[0,0,0,0,0,0,0,0, 1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,0,0,0,0,0,0,0],
+    hat:[0,0,1,0,1,0,0,1, 0,0,1,0,1,0,0,1, 0,0,1,0,1,0,0,1, 0,0,1,0,1,0,0,1] }
 };
 /* 効果音と同じ方式：OfflineAudioContext で“継ぎ目のないループ WAV”を
    プリレンダ→専用のループ <audio> から再生（iOS 画面収録に乗る／
    ミュート・音量にも追従）。店舗×通常/RUSH の最大6種をキャッシュ。 */
-const BGM_BARS=4, BGM_MIXG=0.5;
+const BGM_MIXG=0.42;
 // iOS 画面収録は <audio> を録らないため BGM も <video> 要素で再生
 const bgmAudio=document.createElement('video');
 bgmAudio.loop=true; bgmAudio.playsInline=true; bgmAudio.preload='auto';
@@ -2161,53 +2170,137 @@ let bgmFade=0, bgmFadeTimer=null;
 
 function bgmTrackOf(store){ return BGM_TRACKS[store] || BGM_TRACKS.saizeriya; }
 function bgmStepDur(tr,rush){ return 60/((rush?tr.rbpm:tr.bpm))/4; } // 16分音符長
-function bgmNoteR(ctx,out,semi,t,dur,type,peak){
+function bgmHz(semi){ return BGM_BASE*Math.pow(2,semi/12); }
+// グルーヴ低音：フィルタ付き本体＋1oct下サブ
+function bgmBass(ctx,out,semi,t,dur,wave){
   if(semi==null) return;
-  const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type=type; o.frequency.value=BGM_BASE*Math.pow(2,semi/12);
+  const f=bgmHz(semi);
+  const o=ctx.createOscillator(), lp=ctx.createBiquadFilter(), g=ctx.createGain();
+  o.type=wave||'triangle'; o.frequency.value=f;
+  lp.type='lowpass'; lp.frequency.value=Math.min(1400,f*4+200); lp.Q.value=6;
   g.gain.setValueAtTime(0.0001,t);
-  g.gain.exponentialRampToValueAtTime(peak,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.16,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0005,t+dur);
+  o.connect(lp).connect(g).connect(out); o.start(t); o.stop(t+dur+0.03);
+  const sub=ctx.createOscillator(), sg=ctx.createGain();
+  sub.type='sine'; sub.frequency.value=f/2;
+  sg.gain.setValueAtTime(0.0001,t);
+  sg.gain.exponentialRampToValueAtTime(0.09,t+0.014);
+  sg.gain.exponentialRampToValueAtTime(0.0004,t+dur*0.9);
+  sub.connect(sg).connect(out); sub.start(t); sub.stop(t+dur+0.03);
+}
+// リード：±デチューン2OSC＋軽いビブラート、dry と delay send へ
+function bgmLead(ctx,out,send,semi,t,dur,wave){
+  if(semi==null) return;
+  const f=bgmHz(semi), g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.075,t+0.02);
+  g.gain.exponentialRampToValueAtTime(0.06,t+dur*0.6);
   g.gain.exponentialRampToValueAtTime(0.0006,t+dur);
-  o.connect(g).connect(out);
-  o.start(t); o.stop(t+dur+0.03);
+  const lfo=ctx.createOscillator(), lg=ctx.createGain();
+  lfo.type='sine'; lfo.frequency.value=5.2; lg.gain.value=5; // ±5 cent
+  lfo.connect(lg); lfo.start(t); lfo.stop(t+dur+0.05);
+  [-6,6].forEach(det=>{
+    const o=ctx.createOscillator();
+    o.type=wave||'triangle'; o.frequency.value=f; o.detune.value=det;
+    lg.connect(o.detune);
+    o.connect(g); o.start(t); o.stop(t+dur+0.04);
+  });
+  g.connect(out);
+  if(send){ const s=ctx.createGain(); s.gain.value=0.32; g.connect(s).connect(send); }
 }
-function bgmKickR(ctx,out,t){
-  const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type='sine'; o.frequency.setValueAtTime(155,t);
-  o.frequency.exponentialRampToValueAtTime(48,t+0.12);
-  g.gain.setValueAtTime(0.0001,t);
-  g.gain.exponentialRampToValueAtTime(0.12,t+0.01);
-  g.gain.exponentialRampToValueAtTime(0.0005,t+0.16);
-  o.connect(g).connect(out); o.start(t); o.stop(t+0.18);
+// 和音パッド：ゆっくり立ち上がる持続音
+function bgmPad(ctx,out,send,semis,t,dur,wave){
+  if(!semis) return;
+  semis.forEach(s=>{
+    const o=ctx.createOscillator(), lp=ctx.createBiquadFilter(), g=ctx.createGain();
+    o.type=wave||'sine'; o.frequency.value=bgmHz(s);
+    lp.type='lowpass'; lp.frequency.value=1500; lp.Q.value=0.6;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.linearRampToValueAtTime(0.026,t+dur*0.18);
+    g.gain.setValueAtTime(0.024,t+dur*0.7);
+    g.gain.exponentialRampToValueAtTime(0.0005,t+dur);
+    o.connect(lp).connect(g).connect(out); o.start(t); o.stop(t+dur+0.05);
+    if(send){ const sd=ctx.createGain(); sd.gain.value=0.18; g.connect(sd).connect(send); }
+  });
 }
-function bgmHatR(ctx,out,t){
+function bgmKick(ctx,out,t,deep){
   const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type='square'; o.frequency.value=9000;
+  o.type='sine'; o.frequency.setValueAtTime(deep?135:165,t);
+  o.frequency.exponentialRampToValueAtTime(deep?38:46,t+(deep?0.14:0.1));
   g.gain.setValueAtTime(0.0001,t);
-  g.gain.exponentialRampToValueAtTime(0.028,t+0.005);
-  g.gain.exponentialRampToValueAtTime(0.0004,t+0.04);
-  o.connect(g).connect(out); o.start(t); o.stop(t+0.05);
+  g.gain.exponentialRampToValueAtTime(deep?0.20:0.17,t+0.008);
+  g.gain.exponentialRampToValueAtTime(0.0005,t+(deep?0.22:0.17));
+  o.connect(g).connect(out); o.start(t); o.stop(t+(deep?0.24:0.19));
+}
+function bgmSnare(ctx,out,t,soft){
+  const s=ctx.createBufferSource(); s.buffer=noiseBuffer(ctx,0.2);
+  const bp=ctx.createBiquadFilter(); bp.type='bandpass';
+  bp.frequency.value=soft?2600:1800; bp.Q.value=soft?3:1.1;
+  const ng=ctx.createGain();
+  ng.gain.setValueAtTime(0.0001,t);
+  ng.gain.exponentialRampToValueAtTime(soft?0.07:0.13,t+0.005);
+  ng.gain.exponentialRampToValueAtTime(0.0004,t+(soft?0.07:0.13));
+  s.connect(bp).connect(ng).connect(out); s.start(t); s.stop(t+0.16);
+  if(!soft){
+    const b=ctx.createOscillator(), bg=ctx.createGain();
+    b.type='triangle'; b.frequency.setValueAtTime(190,t);
+    b.frequency.exponentialRampToValueAtTime(130,t+0.08);
+    bg.gain.setValueAtTime(0.0001,t);
+    bg.gain.exponentialRampToValueAtTime(0.05,t+0.006);
+    bg.gain.exponentialRampToValueAtTime(0.0004,t+0.09);
+    b.connect(bg).connect(out); b.start(t); b.stop(t+0.1);
+  }
+}
+function bgmHat(ctx,out,t,accent){
+  const s=ctx.createBufferSource(); s.buffer=noiseBuffer(ctx,0.05);
+  const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=7200;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(accent?0.05:0.022,t+0.004);
+  g.gain.exponentialRampToValueAtTime(0.0004,t+(accent?0.06:0.035));
+  s.connect(hp).connect(g).connect(out); s.start(t); s.stop(t+0.07);
 }
 // store×rush のループ WAV を生成して objectURL を返す（キャッシュ付き）
 function bgmRender(store,rush){
   const key=store+(rush?'R':'N');
   if(bgmCache[key]) return Promise.resolve(bgmCache[key]);
   return new Promise((resolve,reject)=>{
-    let tr,sd,total,loopSec,tail,octx;
+    let tr,sd,steps,loopSec,tail,octx;
     try{
       tr=bgmTrackOf(store); sd=bgmStepDur(tr,rush);
-      total=16*BGM_BARS; loopSec=total*sd; tail=1.0;
+      steps=tr.lead.length; loopSec=steps*sd; tail=1.5;
       octx=OfflineCtx(loopSec+tail);
     }catch(e){ return reject(e); }
     const mix=octx.createGain(); mix.gain.value=BGM_MIXG; mix.connect(octx.destination);
-    const bass=rush?tr.rbass:tr.nbass, lead=rush?tr.rlead:tr.nlead;
-    const lw=rush?tr.rleadWave:tr.leadWave;
-    for(let i=0;i<total;i++){
-      const step=i%16, t=i*sd;
-      bgmNoteR(octx,mix, bass[step], t, sd*3.4, tr.bassWave, 0.10);
-      bgmNoteR(octx,mix, lead[step], t, sd*1.5, lw, 0.075);
-      if(tr.kick[step]) bgmKickR(octx,mix,t);
-      if(tr.hat[step])  bgmHatR(octx,mix,t);
+    // フィードバック・ディレイ（空間感）
+    const dl=octx.createDelay(0.9), fb=octx.createGain(), wet=octx.createGain();
+    dl.delayTime.value=sd*(rush?2:3); fb.gain.value=rush?0.18:0.27; wet.gain.value=0.5;
+    dl.connect(fb).connect(dl); dl.connect(wet).connect(mix);
+    const deep=store==='cocoichi', soft=store==='saizeriya';
+    for(let i=0;i<steps;i++){
+      const tb=i*sd;                                   // 拍頭（低音/ドラムはジャスト）
+      const sw=(!rush && i%2===1)? sd*0.16 : 0;        // 上モノは軽くスウィング
+      const t=tb+sw;
+      // コード（8ステップごと）→ パッド
+      if(i%8===0){
+        const ch=tr.prog[(i/8)%tr.prog.length];
+        bgmPad(octx,mix,dl,ch,tb,sd*8*0.96,tr.padWave);
+      }
+      // ベース（RUSH は休符の表拍に root を足して四つ打ち感）
+      let bs=tr.bass[i];
+      if(bs==null && rush && i%4===2){
+        const ch=tr.prog[Math.floor(i/8)%tr.prog.length]; bs=(ch?ch[0]:0)-12;
+      }
+      if(bs!=null) bgmBass(octx,mix,bs,tb,sd*(rush?1.6:2.6),tr.bassWave);
+      // リード（RUSH は1oct上）
+      let ld=tr.lead[i];
+      if(ld!=null){ if(rush) ld+=12; bgmLead(octx,mix,dl,ld,t,sd*(rush?1.3:1.7),tr.leadWave); }
+      // ドラム
+      if(tr.kick[i] || (rush && i%4===0)) bgmKick(octx,mix,tb,deep);
+      if(tr.snare[i] || (rush && i%8===4)) bgmSnare(octx,mix,tb,soft && !rush);
+      let h=tr.hat[i]; if(rush && !h && i%2===1) h=1;
+      if(h) bgmHat(octx,mix,t,h>=2);
     }
     const finish=buf=>{
       try{
