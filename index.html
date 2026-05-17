@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>サイゼリヤ ガチャ</title>
+<title>飯ガチャスロ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Reggae+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
@@ -60,6 +60,12 @@
   }
   h1 span{color:var(--verde)}
   .sub{font-size:10px;font-weight:700;color:#9a7b53;letter-spacing:.02em}
+  .ver{
+    display:inline-block;font-family:"Reggae One",cursive;
+    font-size:10px;color:#fff;background:var(--verde);
+    padding:1px 8px;border-radius:999px;letter-spacing:.06em;
+    margin:2px 0 1px;box-shadow:2px 2px 0 rgba(0,0,0,.15);
+  }
 
   /* ---- store switcher ---- */
   .storesw{
@@ -900,7 +906,8 @@
 <body>
 <div class="frame">
   <header>
-    <h1><span id="brandName">サイゼ</span><span>ガチャ</span></h1>
+    <h1>飯<span>ガチャスロ</span></h1>
+    <div class="ver">v0.8.0</div>
     <p class="sub">予算内でランダムに注文が決まる！何が出るかはお楽しみ <span id="brandEmoji">🍝</span></p>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -3185,10 +3192,9 @@ function applyStore(key){
     r.setProperty('--oro',th.oro);
   }
   const setText=(id,txt)=>{ const el=document.getElementById(id); if(el) el.textContent=txt; };
-  setText('brandName',s.short);
   setText('brandShort',s.short);
   setText('brandEmoji',s.emoji);
-  document.title=`${s.name} ガチャ`;
+  document.title='飯ガチャスロ';
   storesw.querySelectorAll('.ssbtn').forEach(b=>{
     const on=b.dataset.store===key;
     b.classList.toggle('on',on);
