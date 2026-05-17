@@ -665,6 +665,13 @@
   .chancefx.cont .cfbg{background:linear-gradient(135deg,#ff7a00,#b3001b)}
   .chancefx.end{font-size:clamp(24px,8vw,44px);color:#ffe7c2}
   .chancefx.end .cfbg{background:linear-gradient(135deg,#5a5a5a,#222)}
+  /* ラッシュ中の継続演出はモニタ内に収める（モニタを覆い隠さない） */
+  .chancefx.inmon{
+    position:absolute;left:50%;top:50%;z-index:6;
+    font-size:clamp(16px,4.6vw,22px);padding:6px 14px;border-width:3px;
+    -webkit-text-stroke:1.5px rgba(0,0,0,.28);
+    text-shadow:0 0 10px rgba(255,200,80,.9),0 3px 0 rgba(0,0,0,.22);
+  }
 
   @media (prefers-reduced-motion:reduce){
     .bigcap,.aura,.rays,.spark,.r4 .bigcap .ch,.kaboom,.chancebar{animation:none}
@@ -1557,7 +1564,14 @@ function chanceFx(kind,streak){
   const el=document.createElement('div');
   el.className='chancefx '+m.cls;
   el.innerHTML='<span class="cfbg"></span>'+m.txt;
-  document.body.appendChild(el);
+  // ラッシュ中の継続演出（'cont'）は、スロットモードならモニタ内に出す
+  const monEl=document.getElementById('monitor');
+  if(kind==='cont' && appMode==='slot' && monEl){
+    el.classList.add('inmon');
+    monEl.appendChild(el);
+  }else{
+    document.body.appendChild(el);
+  }
   setTimeout(()=>el.remove(), kind==='end'?1950:2150);
   if(kind!=='end'){
     heatFlash(true);
