@@ -1562,6 +1562,8 @@ function chanceFx(kind,streak){
   el.innerHTML='<span class="cfbg"></span>'+m.txt;
   document.body.appendChild(el);
   setTimeout(()=>el.remove(), kind==='end'?1950:2150);
+  if(kind==='enter') bgmSetRush(true);      // RUSH突入：店舗固有のRUSH曲調へ
+  else if(kind==='end') bgmSetRush(false);  // RUSH終了：通常曲調へ戻す
   if(kind!=='end'){
     heatFlash(true);
     confettiBurst(kind==='enter'?120:70,true);
@@ -2069,6 +2071,125 @@ function applyMasterVolume(){
   if(!masterGain || !actx) return;
   const v = soundMuted ? 0 : soundVolume;
   masterGain.gain.setTargetAtTime(v, actx.currentTime, 0.01);
+}
+
+/* ===== 店舗別 BGM（スロットモード専用・Web Audio 合成）=====
+   音は必ず masterOut(ctx) 経由＝ミュート/音量に追従し iOS 画面収録にも乗る。
+   semitone は C4(261.63Hz) からの半音オフセット。null=休符。負値=低オクターブ。 */
+const BGM_BASE=261.63;
+const BGM_TRACKS={
+  saizeriya:{ // 陽気なイタリアン（メジャー・跳ねるワルツ調）
+    bpm:112, rbpm:152, leadWave:'triangle', bassWave:'sine', rleadWave:'square',
+    nbass:[-12,null,null,null, -5,null,null,null, -3,null,null,null, -7,null,null,null],
+    nlead:[ 12,null, 16,  19, 16,null, 12,null, 14,null, 17,  21, 19,null, 12,null],
+    rbass:[-12,null,-12,null, -5,null, -5,null, -3,null, -3,null, -7,null, -7,null],
+    rlead:[ 24, 19, 16, 12,   19, 16, 12, 16, 21, 17, 14, 17, 19, 16, 12, 24],
+    kick :[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
+    hat  :[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0] },
+  ohsho:{ // 勢いある中華（メジャー・ペンタトニック）
+    bpm:126, rbpm:168, leadWave:'square', bassWave:'triangle', rleadWave:'sawtooth',
+    nbass:[-12,null,null,-12, -5,null,null,null, -12,null,null,-12, -5,null,-7,null],
+    nlead:[ 12, 14, 16, 19,  21, 19, 16, 14,  12, 14, 16, 21,  19, 16, 12,null],
+    rbass:[-12,-12,-5,-5, -12,-12,-7,-7, -12,-12,-5,-5, -7,-7,-5,-5],
+    rlead:[ 24, 21, 19, 16, 19, 21, 24, 21, 16, 19, 21, 24, 21, 19, 16, 12],
+    kick :[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],
+    hat  :[0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1] },
+  cocoichi:{ // スパイシー・エスニック（フリジアン風・ドローン）
+    bpm:104, rbpm:142, leadWave:'sawtooth', bassWave:'sine', rleadWave:'square',
+    nbass:[-12,null,null,null, -12,null,null,null, -12,null,null,null, -12,null,-11,null],
+    nlead:[  0,  1,  3,  5,   7,  5,  3,  1,   8,  7,  5,  3,   5,  3,  1,  0],
+    rbass:[-12,null,-12,null, -12,null,-12,null, -12,null,-12,null, -12,-12,-11,-11],
+    rlead:[ 12, 13, 15, 17,  19, 17, 15, 13,  20, 19, 17, 15,  13, 15, 13, 12],
+    kick :[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],
+    hat  :[0,1,1,0,1,1,0,1,0,1,1,0,1,1,0,1] }
+};
+let bgmGain=null, bgmTimer=null, bgmStep=0, bgmNextT=0, bgmOn=false, bgmRush=false, bgmStore=null;
+function bgmTrack(){ return BGM_TRACKS[bgmStore] || BGM_TRACKS.saizeriya; }
+function bgmStepDur(tr){ return 60/((bgmRush?tr.rbpm:tr.bpm))/4; } // 16分音符長
+function bgmNote(ctx,semi,t,dur,type,peak){
+  if(semi==null) return;
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type; o.frequency.value=BGM_BASE*Math.pow(2,semi/12);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(peak,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0006,t+dur);
+  o.connect(g).connect(bgmGain);
+  o.start(t); o.stop(t+dur+0.03);
+}
+function bgmKick(ctx,t){
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(155,t);
+  o.frequency.exponentialRampToValueAtTime(48,t+0.12);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.12,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0005,t+0.16);
+  o.connect(g).connect(bgmGain); o.start(t); o.stop(t+0.18);
+}
+function bgmHat(ctx,t){
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type='square'; o.frequency.value=9000;
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.028,t+0.005);
+  g.gain.exponentialRampToValueAtTime(0.0004,t+0.04);
+  o.connect(g).connect(bgmGain); o.start(t); o.stop(t+0.05);
+}
+function bgmSchedStep(ctx,step,t){
+  const tr=bgmTrack(), d=bgmStepDur(tr);
+  const bass=bgmRush?tr.rbass:tr.nbass;
+  const lead=bgmRush?tr.rlead:tr.nlead;
+  const lw  =bgmRush?tr.rleadWave:tr.leadWave;
+  bgmNote(ctx, bass[step], t, d*3.4, tr.bassWave, 0.10);
+  bgmNote(ctx, lead[step], t, d*1.5, lw, 0.075);
+  if(tr.kick[step]) bgmKick(ctx,t);
+  if(tr.hat[step])  bgmHat(ctx,t);
+}
+function bgmScheduler(){
+  if(!bgmOn||!actx||!bgmGain){ return; }
+  const ctx=actx;
+  while(bgmNextT < ctx.currentTime + 0.16){
+    bgmSchedStep(ctx,bgmStep,bgmNextT);
+    bgmNextT += bgmStepDur(bgmTrack());
+    bgmStep=(bgmStep+1)%16;
+  }
+  bgmTimer=setTimeout(bgmScheduler,30);
+}
+function bgmStart(){
+  if(appMode!=='slot') return;            // BGM はスロットモード専用
+  let ctx; try{ ctx=AC(); }catch(e){ return; }
+  if(ctx.state==='suspended') ctx.resume();
+  if(!bgmGain){
+    bgmGain=ctx.createGain();
+    bgmGain.gain.value=0.0001;
+    bgmGain.connect(masterOut(ctx));
+  }
+  if(bgmOn) return;                        // 既に鳴っていれば多重起動しない
+  bgmStore=currentStore; bgmRush=chanceMode;
+  bgmOn=true; bgmStep=0; bgmNextT=ctx.currentTime+0.06;
+  bgmGain.gain.cancelScheduledValues(ctx.currentTime);
+  bgmGain.gain.setValueAtTime(Math.max(0.0001,bgmGain.gain.value),ctx.currentTime);
+  bgmGain.gain.exponentialRampToValueAtTime(0.55, ctx.currentTime+0.8); // フェードイン
+  bgmScheduler();
+}
+function bgmStop(fadeMs){
+  if(bgmTimer){ clearTimeout(bgmTimer); bgmTimer=null; }
+  if(!bgmOn){ bgmOn=false; return; }
+  bgmOn=false;
+  if(!actx||!bgmGain) return;
+  const ctx=actx, f=Math.max(0.05,(fadeMs||700)/1000);
+  bgmGain.gain.cancelScheduledValues(ctx.currentTime);
+  bgmGain.gain.setValueAtTime(Math.max(0.0001,bgmGain.gain.value),ctx.currentTime);
+  bgmGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+f); // フェードアウト
+  setTimeout(()=>{ if(!bgmOn&&bgmGain&&actx){ try{ bgmGain.gain.setValueAtTime(0.0001,actx.currentTime); }catch(e){} } }, (fadeMs||700)+80);
+}
+function bgmSetRush(on){
+  if(bgmRush===on) return;
+  bgmRush=on;                              // テンポ/パターンは次ステップから自然に切替
+  if(bgmOn&&bgmGain&&actx){
+    const ctx=actx, cur=Math.max(0.05,bgmGain.gain.value);
+    bgmGain.gain.cancelScheduledValues(ctx.currentTime);
+    bgmGain.gain.setValueAtTime(cur,ctx.currentTime);
+    bgmGain.gain.exponentialRampToValueAtTime(on?0.62:0.55, ctx.currentTime+0.25);
+  }
 }
 
 function noiseBuffer(ctx,dur){
@@ -2590,6 +2711,7 @@ function startGacha(){
   if(spinning) return;
   if(mustOpen){ flashLock(); return; }
   spinning=true;
+  bgmStart();                       // スロットモードならプレイ開始でBGM始動（多重起動はしない）
   const tenMode = energy>=ENERGY_MAX;
   // モニタ演出を結果のレア度で煽るため、先に抽選しておく
   let lvl;
@@ -2638,6 +2760,7 @@ const modesw=document.getElementById('modesw');
 function applyMode(m){
   if(m!=='gacha' && m!=='slot') m='gacha';
   appMode=m;
+  if(m!=='slot') bgmStop(500);    // スロット以外（ガチャ）ではBGMを止める
   try{ localStorage.setItem('mg.mode',m); }catch(e){}
   machine.classList.toggle('mode-gacha', m==='gacha');
   machine.classList.toggle('mode-slot',  m==='slot');
@@ -2708,6 +2831,8 @@ function applyStore(key){
   currentStore=key;
   // 台移動：進行中のチャンスモード（RUSH）は終了
   if(switching && chanceMode){ chanceMode=false; chanceLeft=0; chanceStreak=0; }
+  if(switching) bgmStop(700);     // 店舗切替：BGMはフェードアウトして停止
+
   const s=STORES[key];
   const th=s.theme;
   if(th){
