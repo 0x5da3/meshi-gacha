@@ -912,7 +912,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <div class="ver">v0.11.1</div>
+      <div class="ver">v0.12.1</div>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -1507,6 +1507,8 @@ function computeResult(){
 
 let pendingResult=null;
 let pendingTen=null;
+// RUSH（チャンスモード）中に開封せず溜めるカプセル置き場
+let rushHaul=[];
 // モニタ演出のために結果を先読みしておく置き場（演出後に dispense が消費）
 let preSingle=null;
 let preTen=null;
@@ -1599,10 +1601,20 @@ function chanceFx(kind,streak){
 
 // レバーを回した後：レア度に応じたカプセルが排出口に出てくる
 function dispenseCapsule(){
-  pendingResult=preSingle||computeResult(); preSingle=null;
-  const rare=budgetRarity(pendingResult.budget);
-  mustOpen = (confirmThreshold!=null && rare.lvl>=confirmThreshold);
+  const r=preSingle||computeResult(); preSingle=null;
+  const rare=budgetRarity(r.budget);
   clip(rare.lvl>=4?'dHi':rare.lvl>=2?'dMid':'dLow');
+  // RUSH中：開封せずに溜める。継続/転落は毎スピン即時判定。
+  if(chanceMode){
+    rushHaul.push(r);
+    mustOpen=false;                  // RUSH中はロックしない＝開封せず連打可
+    chanceAfter(rare.lvl);           // 継続/転落を即時判定（演出も即時）
+    if(chanceMode) renderRushStack();  // まだRUSH継続中：溜まり表示
+    else revealRushHaul();             // この回で転落 → ハウル一括開封
+    return;
+  }
+  pendingResult=r;
+  mustOpen = (confirmThreshold!=null && rare.lvl>=confirmThreshold);
   renderCapsuleView();
 }
 
@@ -1887,6 +1899,112 @@ function showDetail(res,back){
   wireShare(()=>singleShareText(res.items,res.total,res.budget-res.total,res.budget));
 }
 
+// ===== RUSH カプセル蓄積（開封せず溜めて、まとめて開封）=====
+// RUSH継続中の溜まり表示。開けずに回し続けてOK／途中の任意開封も可。
+function renderRushStack(){
+  const list=rushHaul;
+  if(!list.length) return;
+  const mr=maxRareOf(list);
+  const screen=document.getElementById('screen');
+  const SHOWN=Math.min(list.length,14);
+  let caps='';
+  for(let i=0;i<SHOWN;i++){
+    const rr=budgetRarity(list[i].budget);
+    caps+=`<button class="bigcap scap" tabindex="-1" aria-hidden="true"
+      style="--cap:${rr.cap};animation-delay:${i*40}ms">
+      <span class="ch"></span><span class="cb"></span><span class="cgloss"></span></button>`;
+  }
+  screen.innerHTML=`
+    <div class="tray r${mr.lvl}" style="--g:${mr.glow}">
+      ${mr.lvl>=2?'<div class="rays"></div>':''}
+      ${mr.lvl>=1?'<div class="aura"></div>':''}
+      <div class="tenlabel">🔥 RUSH たまり ×${list.length}</div>
+      <div class="tengrid" id="tengrid">${caps}</div>
+      <button class="openall" id="rushopen">ここで まとめて開ける 👆</button>
+      <div class="tennote">開けずにそのまま回し続けてOK！RUSH終了で自動開封 🎁</div>
+    </div>`;
+  screen.classList.remove('show');void screen.offsetWidth;screen.classList.add('show');
+  const ob=document.getElementById('rushopen');
+  if(ob) ob.addEventListener('click',revealRushHaul,{once:true});
+}
+
+// 溜めたカプセルを一括開封（RUSH終了時に自動 or 手動ボタン）
+function revealRushHaul(){
+  if(!rushHaul.length) return;
+  const list=rushHaul.slice();
+  rushHaul=[];
+  mustOpen=false;
+  const mr=maxRareOf(list);
+  clip(mr.lvl>=4?'tenWinBig':mr.lvl>=2?'tenWin':'tenOpen');
+  document.querySelectorAll('#tengrid .scap').forEach((el,i)=>{
+    setTimeout(()=>el.classList.add('opening'),i*40);
+  });
+  celebrate(mr,1.4);
+  setTimeout(()=>{ renderRush(list); recordRush(list); },620);
+}
+
+// RUSHハウルを履歴に1件として保存
+function recordRush(list){
+  const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
+  const cnt={};
+  list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
+  const summary=[4,3,2,1,0].filter(l=>cnt[l]).map(l=>`${SHORT[l]}×${cnt[l]}`).join('  ');
+  const total=list.reduce((a,r)=>a+r.total,0);
+  history.unshift({rush:true,list:list.slice(),summary,total});
+  if(history.length>6) history.pop();
+  renderHist();
+}
+
+// RUSHハウルの結果一覧（10連リザルトと同じ見た目を流用）
+function renderRush(list){
+  const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
+  const ORDER=[4,3,2,1,0];
+  const cnt={};
+  list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
+  const summary=ORDER.filter(l=>cnt[l]).map(l=>`${SHORT[l]}×${cnt[l]}`).join('  ');
+  const sumTotal=list.reduce((a,r)=>a+r.total,0);
+  const rows=list.map((r,i)=>{
+    const rr=budgetRarity(r.budget);
+    return `<button class="tcard" data-i="${i}" style="border-color:${rr.c};animation-delay:${i*45}ms">
+      <span class="tbadge" style="background:${rr.c}">${SHORT[rr.lvl]}</span>
+      <span class="tinfo">予算¥${r.budget.toLocaleString()}・${r.items.length}品
+        <span class="titems">${sortItemsByCategory(r.items).map(it=>it[0]).join('、')}</span></span>
+      <span class="tprice">¥${r.total.toLocaleString()} ›</span>
+    </button>`;
+  }).join('');
+  const screen=document.getElementById('screen');
+  screen.innerHTML=`
+    <div class="tenres-h">🔥 RUSH 結果 ／ ${list.length}個GET</div>
+    <div class="tenres-s">${summary}　／　合計 ¥${sumTotal.toLocaleString()}</div>
+    <div class="tennote">各カードをタップで詳細表示 👆</div>
+    ${rows}
+    <div class="sharebar">
+      <button class="js-share primary">📤 RUSH結果をシェア</button>
+      <button class="js-copy">📋 コピー</button>
+    </div>`;
+  screen.classList.remove('show');void screen.offsetWidth;screen.classList.add('show');
+  screen.querySelectorAll('.tcard').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const i=+btn.dataset.i;
+      showDetail(list[i],()=>renderRush(list));
+    });
+  });
+  wireShare(()=>rushShareText(list));
+}
+
+function rushShareText(list){
+  const s=STORES[currentStore];
+  const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
+  const cnt={};
+  list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
+  const summary=[4,3,2,1,0].filter(l=>cnt[l]).map(l=>`${SHORT[l]}×${cnt[l]}`).join(' ');
+  const tot=list.reduce((a,r)=>a+r.total,0);
+  return `${s.emoji}${s.short}ガチャ 🔥RUSH ${list.length}連！\n`
+       + `${summary}\n`
+       + `合計 ¥${tot.toLocaleString()}\n`
+       + `#飯ガチャ`;
+}
+
 // 食べ物のジャンル（カテゴリ）毎にまとめて並べ替え。
 // 並び順は現在の店舗メニューでの登場順（前菜→…→デザート→ドリンク）に従う
 function sortItemsByCategory(items){
@@ -2009,9 +2127,9 @@ function renderHist(){
   if(!history.length){w.style.display='none';return;}
   w.style.display='block';
   const el=document.getElementById('hist');
-  el.innerHTML=history.map((h,idx)=> h.ten
+  el.innerHTML=history.map((h,idx)=> (h.ten||h.rush)
     ? `<button class="hcard" data-h="${idx}">
-        <span class="hi"><b style="color:#c8102e">[10連]</b> ${h.summary}</span>
+        <span class="hi"><b style="color:#c8102e">[${h.rush?`RUSH ${h.list.length}連`:'10連'}]</b> ${h.summary}</span>
         <span class="hp">¥${h.total.toLocaleString()} ›</span>
       </button>`
     : `<button class="hcard" data-h="${idx}">
@@ -2021,7 +2139,8 @@ function renderHist(){
   el.querySelectorAll('.hcard').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const h=history[+btn.dataset.h];
-      if(h.ten) render10(h.list);
+      if(h.rush) renderRush(h.list);
+      else if(h.ten) render10(h.list);
       else showDetail(h.result,null);
     });
   });
@@ -3173,6 +3292,7 @@ function applyMode(m){
   // ガチャモードではチャンスモードを使わないので、切替時に状態を掃除
   if(m==='gacha' && chanceMode){
     chanceMode=false; chanceLeft=0; chanceStreak=0;
+    if(rushHaul.length){ recordRush(rushHaul.slice()); rushHaul=[]; }
     renderChance();
   }
   modesw.querySelectorAll('.msbtn').forEach(b=>{
@@ -3247,7 +3367,10 @@ function applyStore(key){
   const switching = key!==currentStore;
   currentStore=key;
   // 台移動：進行中のチャンスモード（RUSH）は終了
-  if(switching && chanceMode){ chanceMode=false; chanceLeft=0; chanceStreak=0; }
+  if(switching && chanceMode){
+    chanceMode=false; chanceLeft=0; chanceStreak=0;
+    if(rushHaul.length){ recordRush(rushHaul.slice()); rushHaul=[]; }
+  }
   if(switching) bgmStop(700);     // 店舗切替：BGMはフェードアウトして停止
 
   const s=STORES[key];
