@@ -2580,7 +2580,7 @@ function startGacha(){
         renderEnergy();
       }
     }catch(e){ console.error(e); }
-    monitorIdle();
+    // モニタは最後の演出（勝利シーン等）を残し、次のスピン開始時に上書きする
     spinning=false;
     crank.disabled=false;
     if(slotstartBtn) slotstartBtn.disabled=false;
