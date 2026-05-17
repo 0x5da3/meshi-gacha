@@ -2041,13 +2041,65 @@ const SILENT_WAV=SFX_EL?SFX_EL.getAttribute('src'):'';
 let sfxStarted=false, sfxCurUrl=null, sfxRestoreT=null;
 function sfxVol(){ return soundMuted?0:Math.min(1,Math.max(0,soundVolume)); }
 function freeCurUrl(){ if(sfxCurUrl){ try{URL.revokeObjectURL(sfxCurUrl);}catch(e){} sfxCurUrl=null; } }
-// 同じ要素を無音ループに戻し、収録セッションを途切れさせない
+
+/* ===== 診断ビルド =====
+   常時ループの“保持音”を MediaRecorder で実エンコード（Safari は AAC/mp4）
+   した周期ブリップにする。YouTube と同じ「実エンコード済みメディアの連続
+   再生」になるので、これが画面収録に入るかで原因を確定できる。
+   ・ブリップが録画に入る → 実メディアは録れる（合成WAVだけ録れない）
+   ・ブリップも入らない   → <audio> はエンコードでも録れない（要 <video>）
+   未対応端末では従来の無音WAVへ自動フォールバック（音は出続ける）。 */
+let keepSrc=SILENT_WAV, keepVol=0.55, keepReady=false;
+// 同じ要素を“保持音ループ”に戻し、収録セッションを途切れさせない
 function startSilentLoop(){
   if(!SFX_EL) return;
   try{
-    SFX_EL.loop=true; SFX_EL.muted=false; SFX_EL.volume=sfxVol();
-    if(SFX_EL.getAttribute('src')!==SILENT_WAV && SILENT_WAV) SFX_EL.src=SILENT_WAV;
+    SFX_EL.loop=true; SFX_EL.muted=false;
+    SFX_EL.volume = soundMuted?0:keepVol;
+    if(keepSrc && SFX_EL.getAttribute('src')!==keepSrc) SFX_EL.src=keepSrc;
     const p=SFX_EL.play(); if(p&&p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+// 周期ブリップを実エンコード化（録音用にスピーカーへは出さない）
+function buildKeepLoop(){
+  if(keepReady) return;
+  try{
+    if(typeof MediaRecorder==='undefined') return;
+    const ctx=AC();
+    if(!ctx || typeof ctx.createMediaStreamDestination!=='function') return;
+    if(ctx.state==='suspended') ctx.resume();
+    const dest=ctx.createMediaStreamDestination();
+    const t0=ctx.currentTime;
+    [0.10,0.90].forEach(off=>{
+      const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=660;
+      const eg=ctx.createGain();
+      const s=t0+off;
+      eg.gain.setValueAtTime(0.0001,s);
+      eg.gain.linearRampToValueAtTime(0.22,s+0.015);
+      eg.gain.exponentialRampToValueAtTime(0.0006,s+0.16);
+      o.connect(eg).connect(dest);          // dest のみ＝録音用（無音で収録）
+      o.start(s); o.stop(s+0.2);
+    });
+    let mime='';
+    ['audio/mp4','audio/aac','audio/webm;codecs=opus','audio/webm'].some(m=>{
+      if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)){ mime=m; return true; }
+      return false;
+    });
+    const rec = mime ? new MediaRecorder(dest.stream,{mimeType:mime}) : new MediaRecorder(dest.stream);
+    const chunks=[];
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{
+      try{
+        const blob=new Blob(chunks,{type:rec.mimeType||mime||'audio/mp4'});
+        if(blob.size>0){
+          keepSrc=URL.createObjectURL(blob);
+          keepReady=true;
+          if(SFX_EL && SFX_EL.loop) startSilentLoop();   // 実エンコードのループへ昇格
+        }
+      }catch(e){}
+    };
+    rec.start();
+    setTimeout(()=>{ try{ rec.stop(); }catch(e){} }, 1650);
   }catch(e){}
 }
 function onSfxEnded(){ restoreLoop(); }
@@ -2089,14 +2141,14 @@ function sfx(durSec,build){
   }catch(e){}
 }
 function masterOut(ctx){ return ctx.destination; }
-function applyMasterVolume(){ if(SFX_EL){ try{ SFX_EL.volume=sfxVol(); }catch(e){} } }
+function applyMasterVolume(){ if(SFX_EL){ try{ SFX_EL.volume = soundMuted?0:(SFX_EL.loop?keepVol:sfxVol()); }catch(e){} } }
 
 // 最初のユーザー操作で context を起こし、収録セッション保持の無音ループを開始
 let audioUnlocked=false;
 function unlockAudio(){
   try{
     const ctx=AC(); if(ctx&&ctx.state==='suspended') ctx.resume();
-    if(!sfxStarted){ sfxStarted=true; startSilentLoop(); }
+    if(!sfxStarted){ sfxStarted=true; startSilentLoop(); buildKeepLoop(); }
     audioUnlocked=true;
   }catch(e){}
 }
