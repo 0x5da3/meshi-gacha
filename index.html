@@ -212,12 +212,14 @@
   }
   .machine.chance .orderbadge:not(:empty){display:inline-block}
   .slotstart{
-    margin-top:8px;height:36px;border:0;border-radius:9px;cursor:pointer;
+    margin:0 0 10px;height:38px;border:0;border-radius:10px;cursor:pointer;
     background:linear-gradient(180deg,#ff5b6e,#c2122c);color:#fff;width:100%;
     font-family:"Reggae One",cursive;font-size:14px;letter-spacing:.05em;
     box-shadow:0 3px 0 #7a0a1a, inset 0 1px 0 rgba(255,255,255,.4);
     transition:transform .08s, box-shadow .08s, opacity .12s;
   }
+  .machine .slotstart{display:none}
+  .machine.mode-slot .slotstart{display:block}
   .slotstart:not(:disabled):active{transform:translateY(2px);box-shadow:0 1px 0 #7a0a1a}
   .slotstart:disabled{opacity:.5;cursor:not-allowed}
   .ordermiss{
@@ -738,6 +740,35 @@
     background:rgba(0,0,0,.16);border:2px solid var(--rosso-dark);
     border-radius:99px;padding:5px 10px 5px 14px}
   .set-lab{font-size:12px;font-weight:900;color:#ffe07a;flex:0 0 auto;white-space:nowrap}
+
+  /* ---- settings accordion ---- */
+  .settings{
+    background:rgba(0,0,0,.18);border:2px solid var(--rosso-dark);border-radius:14px;
+    padding:0;overflow:hidden;
+  }
+  .settings-h{
+    display:flex;align-items:center;justify-content:space-between;
+    list-style:none;cursor:pointer;user-select:none;
+    padding:7px 14px;font-family:"Reggae One",cursive;font-size:13px;
+    color:#ffe07a;letter-spacing:.04em;
+    background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(0,0,0,.18));
+  }
+  .settings-h::-webkit-details-marker{display:none}
+  .settings-h::marker{display:none;content:''}
+  .settings-caret{
+    color:#ffe07a;font-size:11px;transition:transform .25s ease;
+    display:inline-block;transform-origin:center;
+  }
+  .settings:not([open]) .settings-caret{transform:rotate(-90deg)}
+  .settings-h:hover{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(0,0,0,.18))}
+  .settings-body{
+    display:flex;flex-direction:column;gap:9px;padding:8px 9px 10px;
+    background:rgba(0,0,0,.12);
+    border-top:2px dashed rgba(255,255,255,.08);
+  }
+  .settings:not([open]) .settings-body{display:none}
+  /* alctog 内に直接置く想定なので余白調整 */
+  .settings-body .alctog{margin:0}
   .seg{flex:1;display:flex;gap:0;background:rgba(0,0,0,.18);border:2px solid var(--rosso-dark);
     border-radius:99px;padding:2px;overflow:hidden}
   .seg-b{
@@ -751,12 +782,8 @@
     display:flex;align-items:center;gap:9px;background:none;border:0;
     cursor:pointer;color:#fff;font-family:"Reggae One",cursive;font-size:13px;
     padding:0;letter-spacing:.04em;flex:0 0 auto;
+    margin:10px auto 4px;justify-content:center;
   }
-  .actionrow{
-    display:flex;align-items:center;gap:12px;width:100%;
-  }
-  .actionrow .alctog{flex:0 0 auto;width:auto}
-  .actionrow .crank{margin-left:auto}
   .crank .ctxt{text-shadow:1px 1px 0 rgba(0,0,0,.4)}
   .knob{
     width:50px;height:50px;border-radius:50%;position:relative;
@@ -893,6 +920,7 @@
       <div class="mon-scan"></div>
       <div class="mon-flash" id="monFlash"></div>
     </div>
+    <button class="slotstart" id="slotstart">▶ SPIN</button>
     <div class="slot" id="slot" aria-hidden="true">
       <div class="reels">
         <div class="reel" id="reel0"><span class="slot-face">🎰</span></div>
@@ -913,11 +941,14 @@
           <span class="stoplabel">STOP</span>
         </button>
       </div>
-      <button class="slotstart" id="slotstart">▶ SPIN</button>
       <div class="ordermiss" id="orderMiss" aria-hidden="true">押し順ミス！継続率ダウン</div>
       <div class="slot-flash" id="slotFlash"></div>
     </div>
     <div class="dome"><div class="capsules" id="caps"></div></div>
+    <button class="crank" id="crank" aria-label="レバーをまわしてガチャを回す">
+      <span class="ctxt">まわす&nbsp;⟳</span>
+      <span class="knob"><span class="grip"></span></span>
+    </button>
     <div class="panel">
       <div class="energy" id="energyWrap">
         <span class="elabel">⚡</span>
@@ -925,41 +956,40 @@
         <span class="ecount" id="ecount">0/10</span>
       </div>
       <div class="chancebar" id="chanceWrap" hidden></div>
-      <div class="setrow">
-        <span class="set-lab">予算モード</span>
-        <div class="seg" id="bmSeg">
-          <button class="seg-b on" data-bm="normal">ノーマル&nbsp;¥500</button>
-          <button class="seg-b" data-bm="rich">リッチ&nbsp;¥1000</button>
+      <details class="settings" id="settingsAcc" open>
+        <summary class="settings-h"><span>⚙ 設定</span><span class="settings-caret">▼</span></summary>
+        <div class="settings-body">
+          <div class="setrow">
+            <span class="set-lab">予算モード</span>
+            <div class="seg" id="bmSeg">
+              <button class="seg-b on" data-bm="normal">ノーマル&nbsp;¥500</button>
+              <button class="seg-b" data-bm="rich">リッチ&nbsp;¥1000</button>
+            </div>
+          </div>
+          <div class="setrow">
+            <span class="set-lab">未開封ロック</span>
+            <div class="seg" id="cfSeg">
+              <button class="seg-b" data-th="">OFF</button>
+              <button class="seg-b" data-th="2">R↑</button>
+              <button class="seg-b" data-th="3">RR↑</button>
+              <button class="seg-b on" data-th="4">SR</button>
+            </div>
+          </div>
+          <div class="setrow sndrow">
+            <button class="sndmute" id="sndMute" role="switch" aria-checked="false" aria-label="音をミュート">
+              <span class="snd-ic" id="sndIc">🔊</span>
+              <span class="snd-lab">サウンド</span>
+            </button>
+            <input class="sndvol" id="sndVol" type="range" min="0" max="100" step="1" value="80" aria-label="音量">
+          </div>
+          <button class="alctog" id="alctog" role="switch" aria-checked="true" aria-label="アルコールあり/なし切替">
+            <span class="al-lab"><span>🍷</span><span>アルコール</span></span>
+            <span class="al-right">
+              <span class="al-sw"><span class="al-knob"></span></span>
+            </span>
+          </button>
         </div>
-      </div>
-      <div class="setrow">
-        <span class="set-lab">未開封ロック</span>
-        <div class="seg" id="cfSeg">
-          <button class="seg-b" data-th="">OFF</button>
-          <button class="seg-b" data-th="2">R↑</button>
-          <button class="seg-b" data-th="3">RR↑</button>
-          <button class="seg-b on" data-th="4">SR</button>
-        </div>
-      </div>
-      <div class="setrow sndrow">
-        <button class="sndmute" id="sndMute" role="switch" aria-checked="false" aria-label="音をミュート">
-          <span class="snd-ic" id="sndIc">🔊</span>
-          <span class="snd-lab">サウンド</span>
-        </button>
-        <input class="sndvol" id="sndVol" type="range" min="0" max="100" step="1" value="80" aria-label="音量">
-      </div>
-      <div class="actionrow">
-        <button class="alctog" id="alctog" role="switch" aria-checked="true" aria-label="アルコールあり/なし切替">
-          <span class="al-lab"><span>🍷</span><span>アルコール</span></span>
-          <span class="al-right">
-            <span class="al-sw"><span class="al-knob"></span></span>
-          </span>
-        </button>
-        <button class="crank" id="crank" aria-label="レバーをまわしてガチャを回す">
-          <span class="ctxt">まわす&nbsp;⟳</span>
-          <span class="knob"><span class="grip"></span></span>
-        </button>
-      </div>
+      </details>
     </div>
   </div>
 
@@ -2248,17 +2278,9 @@ let spinning=false;
 // モード別の演出尺。効果音はこの長さに合わせて伸ばす
 function modeAnimMs(lvl){
   if(typeof monReduced==='function' && monReduced()) return 520;
-  if(appMode==='slot'){
-    // モニタ昇格演出の尺に合わせる（スロット側の停止は手動なので別管理）
-    let d=520+520;                       // intro + journey0
-    if(lvl>=1) d+=520;
-    if(lvl>=2) d+=900;
-    if(lvl>=3) d+=980;
-    if(lvl>=4) d+=760+1080;
-    else if(lvl===3) d+=760;
-    else d+=680;
-    return d;
-  }
+  // スロットは手動停止で長さが読めないため、開始時のガラガラを短めに鳴らし、
+  // 以降は STOP ボタン毎の rattleHit でリズムを作る
+  if(appMode==='slot') return 700;
   // ガチャ：モニタなし、ドームのコロコロ感だけで短く
   return 680;
 }
@@ -2405,23 +2427,55 @@ function showOrderMiss(){
   orderMissEl.classList.remove('on'); void orderMissEl.offsetWidth; orderMissEl.classList.add('on');
 }
 
+// スロット用：START・各 STOP に同期して進むモニタシーン
+function slotBeats(st,lvl){
+  const b=[];
+  // [0] START 押下直後（リール回転中）
+  b.push({e:st.intro[0],t:st.intro[1],c:1});
+  // [1] 1 つ目停止後
+  b.push({e:st.journey[0][0],t:st.journey[0][1],c:1});
+  // [2] 2 つ目停止後
+  if(lvl>=3)      b.push({e:st.super[0],t:st.super[1],c:3,r:true});
+  else if(lvl>=2) b.push({e:st.reach[0],t:st.reach[1],c:2,r:true});
+  else            b.push({e:(lvl>=1?st.journey[1][0]:st.journey[0][0]),
+                          t:(lvl>=1?st.journey[1][1]:st.journey[0][1]),c:1});
+  // [3] 3 つ目停止後（最終結果）
+  if(lvl>=4)      b.push({e:st.win[0],t:st.win[1],c:4,r:true,heat:true,win:true,fl:true});
+  else if(lvl===3)b.push({e:'🎊',t:'大当たり!?',c:3,fl:true,win:true});
+  else            b.push({e:st.miss[0],t:st.miss[1],c:Math.min(lvl,1)});
+  return b;
+}
+function applyMonBeat(beat){
+  if(!beat||!monitorEl) return;
+  if(beat.heat) monitorEl.classList.add('heat');
+  if(beat.win)  monitorEl.classList.add('win');
+  monShowScene(beat.e,beat.t,beat.c,beat.r);
+  if(beat.fl) monFlashOn();
+}
+
 async function runSlot(lvl){
   if(!slotEl||!reelFaceEls[0]) return;
+  // モニタは一度クリーンに
+  if(monitorEl){ monitorEl.classList.remove('heat','win'); }
   slotEl.classList.remove('win');
   const targets=slotTargets(lvl);
   const pool=slotPool();
   const orderTarget = chanceMode ? makePressOrder() : null;
   setOrderBadges(orderTarget);
   const orderActual=[];
+  const beats=slotBeats(storyOf(),lvl);
 
   if(monReduced()){
     reelFaceEls.forEach((f,i)=>{ if(f) f.textContent=targets[i]; });
+    applyMonBeat(beats[beats.length-1]);
     if(lvl>=3 && slotEl) slotEl.classList.add('win');
     chanceOrderPenalty=false;     // reduced-motion はミス判定なし
     setOrderBadges(null);
     await sleep(520); return;
   }
 
+  // [0] START 直後のシーン
+  applyMonBeat(beats[0]);
   reelEls.forEach(r=>{ r.classList.remove('stop'); r.classList.add('spinning'); });
   stopBtns.forEach(b=>{ if(b){ b.classList.remove('done'); b.disabled=false; } });
 
@@ -2432,15 +2486,19 @@ async function runSlot(lvl){
 
   await new Promise(resolve=>{
     const stopped=[false,false,false];
+    let pressN=0;
     const stopReel=(i)=>{
       if(stopped[i]) return;
       stopped[i]=true;
       orderActual.push(i);
+      pressN++;
       clearInterval(tickers[i]);
       if(reelFaceEls[i]) reelFaceEls[i].textContent=targets[i];
       if(reelEls[i]){ reelEls[i].classList.remove('spinning'); reelEls[i].classList.add('stop'); }
       if(stopBtns[i]){ stopBtns[i].classList.add('done'); stopBtns[i].disabled=true; }
       try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); rattleHit(ctx,ctx.currentTime,0.22); }catch(e){}
+      // 押下ごとにモニタを 1 シーン進める
+      applyMonBeat(beats[pressN]);
       if(stopped.every(Boolean)){
         slotPending=null;
         resolve();
@@ -2503,12 +2561,8 @@ function startGacha(){
   setTimeout(()=>machine.classList.remove('rolling'),520);
   (async()=>{
     try{
-      if(appMode==='slot'){
-        await runMonitor(lvl);          // スロット時もモニタ演出を流す
-        await runSlot(lvl);             // 続いてリール停止操作へ
-      }else{
-        await sleep(modeAnimMs(lvl));   // ガチャ：モニタ無し
-      }
+      if(appMode==='slot') await runSlot(lvl);          // モニタも STOP に同期して進む
+      else                 await sleep(modeAnimMs(lvl));  // ガチャ：モニタ無し
     }catch(e){ console.error(e); }
     crank.classList.remove('turning');
     try{
@@ -2521,8 +2575,7 @@ function startGacha(){
         renderEnergy();
       }
     }catch(e){ console.error(e); }
-    if(appMode!=='slot') monitorIdle();   // スロットは結果を次回まで残す
-    else monitorIdle();                   // スロット時はモニタも idle に戻す
+    monitorIdle();
     spinning=false;
     crank.disabled=false;
     if(slotstartBtn) slotstartBtn.disabled=false;
