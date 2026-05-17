@@ -201,6 +201,7 @@
     box-shadow:0 3px 0 #5a6072, inset 0 1px 0 rgba(255,255,255,.7);
     display:flex;align-items:center;justify-content:center;
     transition:transform .08s, box-shadow .08s, background .18s;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   }
   .stopbtn:not(:disabled):active{transform:translateY(2px);box-shadow:0 1px 0 #5a6072}
   .stopbtn:disabled{opacity:.45;cursor:not-allowed}
@@ -217,6 +218,7 @@
     font-family:"Reggae One",cursive;font-size:14px;letter-spacing:.05em;
     box-shadow:0 3px 0 #7a0a1a, inset 0 1px 0 rgba(255,255,255,.4);
     transition:transform .08s, box-shadow .08s, opacity .12s;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   }
   .machine .slotstart{display:none}
   .machine.mode-slot .slotstart{display:block}
@@ -783,6 +785,7 @@
     cursor:pointer;color:#fff;font-family:"Reggae One",cursive;font-size:13px;
     padding:0;letter-spacing:.04em;flex:0 0 auto;
     margin:10px auto 4px;justify-content:center;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   }
   .crank .ctxt{text-shadow:1px 1px 0 rgba(0,0,0,.4)}
   .knob{
