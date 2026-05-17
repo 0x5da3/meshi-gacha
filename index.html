@@ -1024,15 +1024,17 @@
      初回操作で無音ループ再生して収録セッションを保持し、SFX 発生時は
      この同じ要素で WAV を再生する（JS側 sfx()/playBuf()）。要素を分ける
      と収録が無音ループ側に固定され SFX が録れない。display:none だと
-     一部 iOS でメディア無効化され得るため不可視でも描画は残す。 -->
-<audio id="silentKeep" loop playsinline preload="auto"
+     一部 iOS でメディア無効化され得るため不可視でも描画は残す。
+     <audio> は iOS の画面収録(ReplayKit)に乗らないため <video> 要素を使う
+     （音声のみの WAV を再生。メディアAPI は <audio> と互換）。 -->
+<video id="silentKeep" loop playsinline webkit-playsinline preload="auto"
+  disablepictureinpicture x-webkit-airplay="deny"
   style="position:fixed;left:-9999px;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none"
   src="data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=">
-</audio>
-<!-- iOS の画面収録は <audio> の音を一切収録せず、<video>(YouTube型=映像+
-     音声の実エンコード連続再生) のみ収録できると実機診断で判明。よって
-     主要音を MediaRecorder で実エンコードし、この単一 <video> から再生
-     する。視認不可だが描画は維持（display:none は一部 iOS で無効化）。 -->
+</video>
+<!-- iOS 画面収録対策(PR#16)：効果音は MediaRecorder で実エンコード
+     （映像トラック付き=YouTube型）し、この <video> で再生して収録対象に。
+     上の silentKeep は非対応端末フォールバック／BGM とは別系統。 -->
 <video id="sfxVid" playsinline webkit-playsinline preload="auto"
   style="position:fixed;left:-9999px;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none"></video>
 
@@ -1393,7 +1395,6 @@ try{
   const sv=localStorage.getItem('mg.snd.vol'); if(sv!=null){ const n=parseFloat(sv); if(isFinite(n)) soundVolume=Math.min(1,Math.max(0,n)); }
   const sm=localStorage.getItem('mg.snd.mute'); if(sm!=null) soundMuted=(sm==='1');
   const am=localStorage.getItem('mg.mode'); if(am==='slot'||am==='gacha') appMode=am;
-  const bm=localStorage.getItem('mg.budget'); if(bm==='normal'||bm==='rich') budgetMode=bm;
 }catch(e){}
 const BUDGET_MIN=1000, BUDGET_MAX=5000;
 function budgetStep(){ return budgetMode==='rich'?1000:500; }
@@ -1570,6 +1571,8 @@ function chanceFx(kind,streak){
   el.innerHTML='<span class="cfbg"></span>'+m.txt;
   document.body.appendChild(el);
   setTimeout(()=>el.remove(), kind==='end'?1950:2150);
+  if(kind==='enter') bgmSetRush(true);      // RUSH突入：店舗固有のRUSH曲調へ
+  else if(kind==='end') bgmSetRush(false);  // RUSH終了：通常曲調へ戻す
   if(kind!=='end'){
     heatFlash(true);
     confettiBurst(kind==='enter'?120:70,true);
@@ -2044,13 +2047,14 @@ function audioBufferToWav(buf){
 // 収録できると実機診断で確定。主要音を MediaRecorder で実エンコード
 // （映像トラック付き）し、単一の <video> 要素から再生して収録対象にする。
 // MediaRecorder 非対応端末は従来のオフライン合成→<audio> にフォールバック。
-const SFX_EL=document.getElementById('silentKeep');     // フォールバック用 <audio>
+const SFX_EL=document.getElementById('silentKeep');     // フォールバック用 / BGM解禁元
 const VID=document.getElementById('sfxVid');            // 収録対象の <video>
+const SILENT_WAV=SFX_EL?SFX_EL.getAttribute('src'):''; // 無音WAV(BGM要素の解禁用)
 let sfxCurUrl=null;
 function sfxVol(){ return soundMuted?0:Math.min(1,Math.max(0,soundVolume)); }
 function masterOut(ctx){ return ctx.__out || ctx.destination; }   // __out で録音先へ差替
 
-// --- フォールバック：オフライン合成→WAV→<audio> 一発再生 ---
+// --- フォールバック：オフライン合成→WAV→<audio> 一発再生（非対応端末用）---
 function playBuf(buf){
   if(!SFX_EL) return;
   try{
@@ -2185,6 +2189,7 @@ function clip(id){
 function applyMasterVolume(){
   try{ if(VID) VID.volume=sfxVol(); }catch(e){}
   try{ if(SFX_EL) SFX_EL.volume=sfxVol(); }catch(e){}
+  if(typeof bgmApplyVol==='function') bgmApplyVol();   // 店舗別BGMの音量も追従
 }
 // ユーザー操作中に <video> を一度動かして以後の自動再生を解禁
 function primeVideoEl(){
@@ -2213,11 +2218,203 @@ async function startVideoAudio(){
 function unlockAudio(){
   try{
     const ctx=AC(); if(ctx&&ctx.state==='suspended') ctx.resume();
-    if(!audioUnlocked){ audioUnlocked=true; primeVideoEl(); startVideoAudio(); }
+    if(!audioUnlocked){
+      audioUnlocked=true;
+      primeVideoEl(); startVideoAudio();
+      if(typeof bgmPrime==='function') bgmPrime();
+      if(typeof bgmPrewarm==='function') bgmPrewarm();
+    }
   }catch(e){}
 }
 ['pointerdown','touchend','click','keydown'].forEach(ev=>
   window.addEventListener(ev,unlockAudio,{passive:true}));
+
+/* ===== 店舗別 BGM（スロットモード専用・Web Audio 合成）=====
+   音は必ず masterOut(ctx) 経由＝ミュート/音量に追従し iOS 画面収録にも乗る。
+   semitone は C4(261.63Hz) からの半音オフセット。null=休符。負値=低オクターブ。 */
+const BGM_BASE=261.63;
+const BGM_TRACKS={
+  saizeriya:{ // 陽気なイタリアン（メジャー・跳ねるワルツ調）
+    bpm:112, rbpm:152, leadWave:'triangle', bassWave:'sine', rleadWave:'square',
+    nbass:[-12,null,null,null, -5,null,null,null, -3,null,null,null, -7,null,null,null],
+    nlead:[ 12,null, 16,  19, 16,null, 12,null, 14,null, 17,  21, 19,null, 12,null],
+    rbass:[-12,null,-12,null, -5,null, -5,null, -3,null, -3,null, -7,null, -7,null],
+    rlead:[ 24, 19, 16, 12,   19, 16, 12, 16, 21, 17, 14, 17, 19, 16, 12, 24],
+    kick :[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
+    hat  :[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0] },
+  ohsho:{ // 勢いある中華（メジャー・ペンタトニック）
+    bpm:126, rbpm:168, leadWave:'square', bassWave:'triangle', rleadWave:'sawtooth',
+    nbass:[-12,null,null,-12, -5,null,null,null, -12,null,null,-12, -5,null,-7,null],
+    nlead:[ 12, 14, 16, 19,  21, 19, 16, 14,  12, 14, 16, 21,  19, 16, 12,null],
+    rbass:[-12,-12,-5,-5, -12,-12,-7,-7, -12,-12,-5,-5, -7,-7,-5,-5],
+    rlead:[ 24, 21, 19, 16, 19, 21, 24, 21, 16, 19, 21, 24, 21, 19, 16, 12],
+    kick :[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],
+    hat  :[0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1] },
+  cocoichi:{ // スパイシー・エスニック（フリジアン風・ドローン）
+    bpm:104, rbpm:142, leadWave:'sawtooth', bassWave:'sine', rleadWave:'square',
+    nbass:[-12,null,null,null, -12,null,null,null, -12,null,null,null, -12,null,-11,null],
+    nlead:[  0,  1,  3,  5,   7,  5,  3,  1,   8,  7,  5,  3,   5,  3,  1,  0],
+    rbass:[-12,null,-12,null, -12,null,-12,null, -12,null,-12,null, -12,-12,-11,-11],
+    rlead:[ 12, 13, 15, 17,  19, 17, 15, 13,  20, 19, 17, 15,  13, 15, 13, 12],
+    kick :[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],
+    hat  :[0,1,1,0,1,1,0,1,0,1,1,0,1,1,0,1] }
+};
+/* 効果音と同じ方式：OfflineAudioContext で“継ぎ目のないループ WAV”を
+   プリレンダ→専用のループ <audio> から再生（iOS 画面収録に乗る／
+   ミュート・音量にも追従）。店舗×通常/RUSH の最大6種をキャッシュ。 */
+const BGM_BARS=4, BGM_MIXG=0.5;
+// iOS 画面収録は <audio> を録らないため BGM も <video> 要素で再生
+const bgmAudio=document.createElement('video');
+bgmAudio.loop=true; bgmAudio.playsInline=true; bgmAudio.preload='auto';
+bgmAudio.setAttribute('playsinline',''); bgmAudio.setAttribute('webkit-playsinline','');
+bgmAudio.setAttribute('disablepictureinpicture','');
+bgmAudio.style.cssText='position:fixed;left:-9999px;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none';
+document.body.appendChild(bgmAudio);
+const bgmCache={};
+let bgmKey=null, bgmWanted=false, bgmRush=false, bgmStore=null;
+let bgmFade=0, bgmFadeTimer=null;
+
+function bgmTrackOf(store){ return BGM_TRACKS[store] || BGM_TRACKS.saizeriya; }
+function bgmStepDur(tr,rush){ return 60/((rush?tr.rbpm:tr.bpm))/4; } // 16分音符長
+function bgmNoteR(ctx,out,semi,t,dur,type,peak){
+  if(semi==null) return;
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type; o.frequency.value=BGM_BASE*Math.pow(2,semi/12);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(peak,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0006,t+dur);
+  o.connect(g).connect(out);
+  o.start(t); o.stop(t+dur+0.03);
+}
+function bgmKickR(ctx,out,t){
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(155,t);
+  o.frequency.exponentialRampToValueAtTime(48,t+0.12);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.12,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0005,t+0.16);
+  o.connect(g).connect(out); o.start(t); o.stop(t+0.18);
+}
+function bgmHatR(ctx,out,t){
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type='square'; o.frequency.value=9000;
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.028,t+0.005);
+  g.gain.exponentialRampToValueAtTime(0.0004,t+0.04);
+  o.connect(g).connect(out); o.start(t); o.stop(t+0.05);
+}
+// store×rush のループ WAV を生成して objectURL を返す（キャッシュ付き）
+function bgmRender(store,rush){
+  const key=store+(rush?'R':'N');
+  if(bgmCache[key]) return Promise.resolve(bgmCache[key]);
+  return new Promise((resolve,reject)=>{
+    let tr,sd,total,loopSec,tail,octx;
+    try{
+      tr=bgmTrackOf(store); sd=bgmStepDur(tr,rush);
+      total=16*BGM_BARS; loopSec=total*sd; tail=1.0;
+      octx=OfflineCtx(loopSec+tail);
+    }catch(e){ return reject(e); }
+    const mix=octx.createGain(); mix.gain.value=BGM_MIXG; mix.connect(octx.destination);
+    const bass=rush?tr.rbass:tr.nbass, lead=rush?tr.rlead:tr.nlead;
+    const lw=rush?tr.rleadWave:tr.leadWave;
+    for(let i=0;i<total;i++){
+      const step=i%16, t=i*sd;
+      bgmNoteR(octx,mix, bass[step], t, sd*3.4, tr.bassWave, 0.10);
+      bgmNoteR(octx,mix, lead[step], t, sd*1.5, lw, 0.075);
+      if(tr.kick[step]) bgmKickR(octx,mix,t);
+      if(tr.hat[step])  bgmHatR(octx,mix,t);
+    }
+    const finish=buf=>{
+      try{
+        const sr=buf.sampleRate, loopLen=Math.round(sr*loopSec);
+        const src=buf.getChannelData(0);
+        const ac=AC(); const lb=ac.createBuffer(1,loopLen,sr);
+        const d=lb.getChannelData(0);
+        for(let i=0;i<loopLen;i++) d[i]=src[i]||0;
+        // 末尾の余韻を先頭へ折り返し＝継ぎ目のないループに
+        const tailN=Math.min(buf.length-loopLen,loopLen);
+        for(let i=0;i<tailN;i++) d[i]+=src[loopLen+i]||0;
+        const url=URL.createObjectURL(new Blob([audioBufferToWav(lb)],{type:'audio/wav'}));
+        bgmCache[key]=url; resolve(url);
+      }catch(e){ reject(e); }
+    };
+    try{
+      octx.oncomplete=e=>finish(e.renderedBuffer);
+      const r=octx.startRendering();
+      if(r&&r.then) r.then(finish).catch(reject);
+    }catch(e){ reject(e); }
+  });
+}
+function bgmApplyVol(){
+  try{ bgmAudio.volume=Math.max(0,Math.min(1, sfxVol()*bgmFade)); }catch(e){}
+}
+function bgmFadeTo(target,ms,cb){
+  if(bgmFadeTimer){ clearInterval(bgmFadeTimer); bgmFadeTimer=null; }
+  target=Math.max(0,Math.min(1,target));
+  if(!ms||ms<=20){ bgmFade=target; bgmApplyVol(); if(cb)cb(); return; }
+  const start=bgmFade, t0=Date.now();
+  bgmFadeTimer=setInterval(()=>{
+    const k=Math.min(1,(Date.now()-t0)/ms);
+    bgmFade=start+(target-start)*k;
+    bgmApplyVol();
+    if(k>=1){ clearInterval(bgmFadeTimer); bgmFadeTimer=null; bgmFade=target; if(cb)cb(); }
+  },30);
+}
+function bgmPlayKey(store,rush){
+  const key=store+(rush?'R':'N');
+  bgmRender(store,rush).then(url=>{
+    if(!bgmWanted||appMode!=='slot') return;     // 待っている間に止まっていたら破棄
+    if(bgmKey===key && !bgmAudio.paused) return;
+    bgmKey=key;
+    try{
+      bgmAudio.src=url; bgmAudio.loop=true; bgmAudio.currentTime=0;
+      const p=bgmAudio.play(); if(p&&p.catch) p.catch(()=>{});
+    }catch(e){}
+  }).catch(()=>{});
+}
+function bgmStart(){
+  if(appMode!=='slot') return;                  // BGM はスロットモード専用
+  try{ const c=AC(); if(c&&c.state==='suspended') c.resume(); }catch(e){}
+  bgmWanted=true;
+  bgmStore=currentStore; bgmRush=chanceMode;
+  const key=bgmStore+(bgmRush?'R':'N');
+  if(bgmKey===key && !bgmAudio.paused){ bgmFadeTo(1,400); return; } // 多重起動しない
+  bgmPlayKey(bgmStore,bgmRush);
+  bgmFadeTo(1,800);                              // フェードイン
+}
+function bgmStop(fadeMs){
+  bgmWanted=false;
+  bgmFadeTo(0, fadeMs||700, ()=>{
+    if(bgmWanted) return;                        // フェード中に再開していたら止めない
+    try{ bgmAudio.pause(); }catch(e){}
+    bgmKey=null;
+  });
+}
+function bgmSetRush(on){
+  if(bgmRush===on) return;
+  bgmRush=on;
+  if(!bgmWanted||appMode!=='slot') return;
+  const st=bgmStore||currentStore;
+  bgmFadeTo(0,200,()=>{                          // 一旦絞って店舗固有のRUSH曲へ差し替え
+    if(!bgmWanted) return;
+    bgmKey=null; bgmPlayKey(st,on);
+    bgmFadeTo(1,320);
+  });
+}
+// 初回解禁時に現在店舗の通常曲を先読みしておく（初回再生のもたつき防止）
+// 初回ユーザー操作中に BGM 要素を一度 play() して以後の自動再生を解禁
+let bgmPrimed=false;
+function bgmPrime(){
+  if(bgmPrimed) return; bgmPrimed=true;
+  try{
+    if(SILENT_WAV) bgmAudio.src=SILENT_WAV;
+    bgmAudio.muted=true;
+    const p=bgmAudio.play();
+    if(p&&p.then) p.then(()=>{ try{ bgmAudio.pause(); bgmAudio.currentTime=0; }catch(e){} bgmAudio.muted=false; }).catch(()=>{ bgmAudio.muted=false; });
+    else bgmAudio.muted=false;
+  }catch(e){}
+}
+function bgmPrewarm(){ try{ bgmRender(currentStore,false); }catch(e){} }
 
 function noiseBuffer(ctx,dur){
   const len=Math.floor(ctx.sampleRate*dur);
@@ -2563,20 +2760,28 @@ const slotFlashEl=document.getElementById('slotFlash');
 const reelEls=[document.getElementById('reel0'),document.getElementById('reel1'),document.getElementById('reel2')];
 const reelFaceEls=reelEls.map(r=>r&&r.querySelector('.slot-face'));
 const SLOT_POOLS={
-  saizeriya:['🍝','🍅','🧀','🍷','🐌','⭐'],
-  ohsho    :['🥟','🔥','🍳','🐉','🍚','⭐'],
-  cocoichi :['🍛','🌶️','🍚','🥄','🍻','⭐'],
+  saizeriya:['🍝','🍅','🧀','🍷','🐌','🍕','🥗','🍮','🍞','⭐'],
+  ohsho    :['🥟','🔥','🍳','🐉','🍚','🍜','🍤','🍺','🥢','⭐'],
+  cocoichi :['🍛','🌶️','🍚','🥄','🍻','🥚','🍗','🥔','🍮','⭐'],
 };
+// 当たり用プレミア絵柄。3つ揃いの組み合わせを増やすための上位/ボーナス揃い
+const SLOT_JACKPOTS=['👑','💎','7️⃣'];   // lvl4：最上位の確定揃い
+const SLOT_BONUS  =['⭐','🔔','🎰'];     // lvl3：通常絵柄揃い以外のボーナス揃い
 const SLOT_JACKPOT='👑';
-function slotPool(){ return SLOT_POOLS[currentStore] || ['🍒','🍋','🔔','🍇','⭐','🍀']; }
+function slotPool(){ return SLOT_POOLS[currentStore] || ['🍒','🍋','🔔','🍇','🍉','🍇','🍀','⭐']; }
 function slotTargets(lvl){
   const pool=slotPool();
-  const pick=()=>pool[Math.floor(Math.random()*pool.length)];
-  if(lvl>=4) return [SLOT_JACKPOT,SLOT_JACKPOT,SLOT_JACKPOT];
-  if(lvl===3){ const s=pick(); return [s,s,s]; }
-  if(lvl===2){ const a=pick(); let b=pick(); while(b===a) b=pick(); return [a,a,b]; }
-  // lvl 0/1: all different
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  if(lvl>=4){ const s=pick(SLOT_JACKPOTS); return [s,s,s]; }            // 👑/💎/7️⃣ の確定揃い
+  if(lvl===3){
+    // 通常絵柄揃い、または ⭐/🔔/🎰 のボーナス揃いでバリエーション
+    const s = Math.random()<0.4 ? pick(SLOT_BONUS) : pick(pool);
+    return [s,s,s];
+  }
+  if(lvl===2){ const a=pick(pool); let b=pick(pool); while(b===a) b=pick(pool); return [a,a,b]; } // リーチ
+  // lvl 0/1: 基本は全て異なる。lvl1 はたまに「両端だけ揃い＝惜しいハズレ」で煽る
   const shuf=pool.slice().sort(()=>Math.random()-0.5);
+  if(lvl===1 && Math.random()<0.35) return [shuf[0],shuf[1],shuf[0]];
   return [shuf[0],shuf[1],shuf[2]];
 }
 const stopBtns=[document.querySelector('.stopbtn[data-reel="0"]'),document.querySelector('.stopbtn[data-reel="1"]'),document.querySelector('.stopbtn[data-reel="2"]')];
@@ -2729,6 +2934,7 @@ function startGacha(){
   if(spinning) return;
   if(mustOpen){ flashLock(); return; }
   spinning=true;
+  bgmStart();                       // スロットモードならプレイ開始でBGM始動（多重起動はしない）
   const tenMode = energy>=ENERGY_MAX;
   // モニタ演出を結果のレア度で煽るため、先に抽選しておく
   let lvl;
@@ -2777,6 +2983,7 @@ const modesw=document.getElementById('modesw');
 function applyMode(m){
   if(m!=='gacha' && m!=='slot') m='gacha';
   appMode=m;
+  if(m!=='slot') bgmStop(500);    // スロット以外（ガチャ）ではBGMを止める
   try{ localStorage.setItem('mg.mode',m); }catch(e){}
   machine.classList.toggle('mode-gacha', m==='gacha');
   machine.classList.toggle('mode-slot',  m==='slot');
@@ -2847,6 +3054,8 @@ function applyStore(key){
   currentStore=key;
   // 台移動：進行中のチャンスモード（RUSH）は終了
   if(switching && chanceMode){ chanceMode=false; chanceLeft=0; chanceStreak=0; }
+  if(switching) bgmStop(700);     // 店舗切替：BGMはフェードアウトして停止
+
   const s=STORES[key];
   const th=s.theme;
   if(th){
@@ -2906,7 +3115,6 @@ const bmSeg=document.getElementById('bmSeg');
 function applyBudgetMode(m){
   if(m!=='normal'&&m!=='rich') m='normal';
   budgetMode=m;
-  try{ localStorage.setItem('mg.budget',m); }catch(e){}
   bmSeg.querySelectorAll('.seg-b').forEach(b=>{
     b.classList.toggle('on', b.dataset.bm===m);
   });
