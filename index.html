@@ -1582,9 +1582,9 @@ function chanceFx(kind,streak){
   const el=document.createElement('div');
   el.className='chancefx '+m.cls;
   el.innerHTML='<span class="cfbg"></span>'+m.txt;
-  // ラッシュ中の継続演出（'cont'）は、スロットモードならモニタ内に出す
+  // ラッシュ関連の演出はスロットモードならすべてモニタ内に出してモニタを隠さない
   const monEl=document.getElementById('monitor');
-  if(kind==='cont' && appMode==='slot' && monEl){
+  if(appMode==='slot' && monEl){
     el.classList.add('inmon');
     monEl.appendChild(el);
   }else{
