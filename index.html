@@ -1511,8 +1511,13 @@ function renderChance(){
 // 1スピン分の結果レア度を受け取り、突入/継続/転落を判定
 function chanceAfter(lvl){
   const sp=curSpec();
+  // チャンスモード（確変ST RUSH）はスロットモード専用
+  if(appMode!=='slot') return;
   if(!chanceMode){
-    // チャンスモード突入は廃止（継続中の確変のみ継続抽選を回す）
+    if(lvl>=sp.triggerLvl){
+      chanceMode=true; chanceStreak=1; chanceLeft=sp.stSpins;
+      renderChance(); chanceFx('enter',1);
+    }
     return;
   }
   // チャンス中：この回が継続抽選に当たれば連チャン（SRは継続確定）。
@@ -2592,6 +2597,11 @@ function applyMode(m){
   try{ localStorage.setItem('mg.mode',m); }catch(e){}
   machine.classList.toggle('mode-gacha', m==='gacha');
   machine.classList.toggle('mode-slot',  m==='slot');
+  // ガチャモードではチャンスモードを使わないので、切替時に状態を掃除
+  if(m==='gacha' && chanceMode){
+    chanceMode=false; chanceLeft=0; chanceStreak=0;
+    renderChance();
+  }
   modesw.querySelectorAll('.msbtn').forEach(b=>{
     const on=b.dataset.mode===m;
     b.classList.toggle('on',on);
