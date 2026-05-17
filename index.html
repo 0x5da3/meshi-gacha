@@ -907,7 +907,7 @@
 <div class="frame">
   <header>
     <h1>飯<span>ガチャスロ</span></h1>
-    <div class="ver">v0.9.2</div>
+    <div class="ver">v0.10.1</div>
     <p class="sub">予算内でランダムに注文が決まる！何が出るかはお楽しみ <span id="brandEmoji">🍝</span></p>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -2024,8 +2024,14 @@ const machine=document.getElementById('machine');
    常時ループ再生（収録セッションを保持）し、その同じ要素で SFX(WAV)
    を再生する。SFX は OfflineAudioContext で合成→WAV化し、頭に短い
    無音を付けて収録の取りこぼしを防ぐ。 */
-let actx;
-function AC(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
+let actx, sfxGain;
+function AC(){
+  if(!actx){
+    try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return actx; }
+    try{ sfxGain=actx.createGain(); sfxGain.gain.value=sfxVol(); sfxGain.connect(actx.destination); }catch(e){}
+  }
+  return actx;
+}
 
 const SFX_SR=44100;
 function OfflineCtx(durSec){
@@ -2058,7 +2064,7 @@ const VID=document.getElementById('sfxVid');            // 収録対象の <vide
 const SILENT_WAV=SFX_EL?SFX_EL.getAttribute('src'):''; // 無音WAV(BGM要素の解禁用)
 let sfxCurUrl=null;
 function sfxVol(){ return soundMuted?0:Math.min(1,Math.max(0,soundVolume)); }
-function masterOut(ctx){ return ctx.__out || ctx.destination; }   // __out で録音先へ差替
+function masterOut(ctx){ return ctx.__out || sfxGain || ctx.destination; } // 通常は SFX バスへ
 
 // --- フォールバック：オフライン合成→WAV→<audio> 一発再生（非対応端末用）---
 function playBuf(buf){
@@ -2186,16 +2192,18 @@ function vPlay(id){
     return true;
   }catch(e){ vKeepLoop(); return false; }
 }
-// ゲーム側はこの clip(id) を呼ぶ
+// ゲーム側はこの clip(id) を呼ぶ（画面収録は考慮せずリアルタイム合成→SFXバス）
 function clip(id){
   if(soundMuted) return;
-  if(videoMode){ if(clipUrl[id]) vPlay(id); return; }   // 動画方式は収録優先
-  const d=CLIPS[id]; if(d) sfx(d.d, c=>d.b(c));          // 非対応端末フォールバック
+  const def=CLIPS[id]; if(!def) return;
+  let ctx; try{ ctx=AC(); }catch(e){ return; }
+  if(!ctx) return;
+  try{ if(ctx.state==='suspended') ctx.resume(); }catch(e){}
+  try{ def.b(ctx); }catch(e){}
 }
 function applyMasterVolume(){
-  try{ if(VID) VID.volume=sfxVol(); }catch(e){}
-  try{ if(SFX_EL) SFX_EL.volume=sfxVol(); }catch(e){}
-  if(typeof bgmApplyVol==='function') bgmApplyVol();   // 店舗別BGMの音量も追従
+  try{ if(sfxGain&&actx) sfxGain.gain.setTargetAtTime(sfxVol(),actx.currentTime,0.012); }catch(e){}
+  if(typeof bgmApplyVol==='function') bgmApplyVol();   // BGM 音量も追従
 }
 // ユーザー操作中に <video> を一度動かして以後の自動再生を解禁
 function primeVideoEl(){
@@ -2226,7 +2234,6 @@ function unlockAudio(){
     const ctx=AC(); if(ctx&&ctx.state==='suspended') ctx.resume();
     if(!audioUnlocked){
       audioUnlocked=true;
-      primeVideoEl(); startVideoAudio();
       if(typeof bgmPrime==='function') bgmPrime();
       if(typeof bgmPrewarm==='function') bgmPrewarm();
     }
@@ -2238,12 +2245,11 @@ function unlockAudio(){
 // ページ非表示/離脱で音を止める（バックグラウンドや閉じた後も鳴り続けるのを防ぐ）
 function pauseAllAudio(){
   try{ if(typeof bgmAudio!=='undefined'&&bgmAudio) bgmAudio.pause(); }catch(e){}
-  try{ if(typeof VID!=='undefined'&&VID) VID.pause(); }catch(e){}
-  try{ if(SFX_EL) SFX_EL.pause(); }catch(e){}
+  try{ if(actx&&actx.state==='running') actx.suspend(); }catch(e){}
 }
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ pauseAllAudio(); return; }
-  try{ if(typeof videoMode!=='undefined'&&videoMode&&typeof vKeepLoop==='function') vKeepLoop(); }catch(e){} // 収録セッション復帰
+  try{ if(actx&&actx.state==='suspended') actx.resume(); }catch(e){}
   try{ if(typeof bgmWanted!=='undefined'&&bgmWanted&&appMode==='slot'&&typeof bgmStart==='function') bgmStart(); }catch(e){}
 });
 window.addEventListener('pagehide',pauseAllAudio);
@@ -2509,7 +2515,7 @@ function bgmApplyVol(){
   try{
     const m = bgmMuted || soundMuted;
     bgmAudio.muted = m;
-    bgmAudio.volume = m ? 0 : Math.max(0,Math.min(1, sfxVol()*bgmFade));
+    bgmAudio.volume = m ? 0 : Math.max(0,Math.min(1, sfxVol()*bgmFade*0.5)); // BGM は SFX の下に
   }catch(e){}
 }
 function bgmFadeTo(target,ms,cb){
