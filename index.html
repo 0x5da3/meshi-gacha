@@ -221,6 +221,7 @@
     box-shadow:0 3px 0 #5a6072, inset 0 1px 0 rgba(255,255,255,.7);
     display:flex;align-items:center;justify-content:center;
     transition:transform .08s, box-shadow .08s, background .18s;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;
   }
   .stopbtn:not(:disabled):active{transform:translateY(2px);box-shadow:0 1px 0 #5a6072}
   .stopbtn:disabled{opacity:.45;cursor:not-allowed}
@@ -237,6 +238,7 @@
     font-family:"Reggae One",cursive;font-size:14px;letter-spacing:.05em;
     box-shadow:0 3px 0 #7a0a1a, inset 0 1px 0 rgba(255,255,255,.4);
     transition:transform .08s, box-shadow .08s, opacity .12s;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;
   }
   .machine .slotstart{display:none}
   .machine.mode-slot .slotstart{display:block}
@@ -804,6 +806,7 @@
     cursor:pointer;color:#fff;font-family:"Reggae One",cursive;font-size:13px;
     padding:0;letter-spacing:.04em;flex:0 0 auto;
     margin:10px auto 4px;justify-content:center;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;
   }
   .crank .ctxt{text-shadow:1px 1px 0 rgba(0,0,0,.4)}
   .knob{
@@ -923,7 +926,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <div class="ver">v0.12.1</div>
+      <div class="ver">v0.12.2</div>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -2730,10 +2733,15 @@ function bgmPrime(){
 function bgmPrewarm(){ try{ bgmRender(currentStore,false); }catch(e){} }
 
 function noiseBuffer(ctx,dur){
-  const len=Math.floor(ctx.sampleRate*dur);
+  const len=Math.max(1,Math.floor(ctx.sampleRate*dur));
+  // 短尺は使い回し（毎クリック生成だと割当が嵩むため）
+  if(!ctx.__noiseCache) ctx.__noiseCache={};
+  const key=len<=4800?len:0;   // 約0.1s以下のみキャッシュ
+  if(key && ctx.__noiseCache[key]) return ctx.__noiseCache[key];
   const buf=ctx.createBuffer(1,len,ctx.sampleRate);
   const d=buf.getChannelData(0);
   for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  if(key) ctx.__noiseCache[key]=buf;
   return buf;
 }
 
@@ -3198,13 +3206,19 @@ async function runSlot(lvl){
       stopped[i]=true;
       orderActual.push(i);
       pressN++;
+      const myPress=pressN;
       clearInterval(tickers[i]);
+      // ① 押下感の即時フィードバック（ボタン／リール）を先に反映
+      if(stopBtns[i]){ stopBtns[i].classList.add('done'); stopBtns[i].disabled=true; }
       if(reelFaceEls[i]) reelFaceEls[i].textContent=targets[i];
       if(reelEls[i]){ reelEls[i].classList.remove('spinning'); reelEls[i].classList.add('stop'); }
-      if(stopBtns[i]){ stopBtns[i].classList.add('done'); stopBtns[i].disabled=true; }
-      try{ clip('rattle'); }catch(e){}
-      // 押下ごとにモニタを 1 シーン進める
-      applyMonBeat(beats[pressN]);
+      // ② 音／モニタ更新は次フレームへ回し、ボタン描画を先に通す
+      const after=()=>{
+        try{ clip('rattle'); }catch(e){}
+        applyMonBeat(beats[myPress]);
+      };
+      if(typeof requestAnimationFrame==='function') requestAnimationFrame(after);
+      else setTimeout(after,0);
       if(stopped.every(Boolean)){
         slotPending=null;
         resolve();
@@ -3237,9 +3251,18 @@ async function runSlot(lvl){
 // 停止ボタン／START ボタンの配線
 stopBtns.forEach((b,i)=>{
   if(!b) return;
-  b.addEventListener('click',()=>{
+  // pointerdown を主に使い反応を早くする（click はフォールバック）
+  const trigger=(e)=>{
+    if(b.disabled) return;
+    if(e&&e.cancelable) e.preventDefault();
     if(slotPending) slotPending.stopReel(i);
-  });
+  };
+  if(window.PointerEvent){
+    b.addEventListener('pointerdown',trigger);
+  }else{
+    b.addEventListener('touchstart',trigger,{passive:false});
+    b.addEventListener('click',trigger);
+  }
 });
 if(slotstartBtn) slotstartBtn.addEventListener('click',startGacha);
 
