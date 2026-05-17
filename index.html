@@ -2445,20 +2445,28 @@ const slotFlashEl=document.getElementById('slotFlash');
 const reelEls=[document.getElementById('reel0'),document.getElementById('reel1'),document.getElementById('reel2')];
 const reelFaceEls=reelEls.map(r=>r&&r.querySelector('.slot-face'));
 const SLOT_POOLS={
-  saizeriya:['🍝','🍅','🧀','🍷','🐌','⭐'],
-  ohsho    :['🥟','🔥','🍳','🐉','🍚','⭐'],
-  cocoichi :['🍛','🌶️','🍚','🥄','🍻','⭐'],
+  saizeriya:['🍝','🍅','🧀','🍷','🐌','🍕','🥗','🍮','🍞','⭐'],
+  ohsho    :['🥟','🔥','🍳','🐉','🍚','🍜','🍤','🍺','🥢','⭐'],
+  cocoichi :['🍛','🌶️','🍚','🥄','🍻','🥚','🍗','🥔','🍮','⭐'],
 };
+// 当たり用プレミア絵柄。3つ揃いの組み合わせを増やすための上位/ボーナス揃い
+const SLOT_JACKPOTS=['👑','💎','7️⃣'];   // lvl4：最上位の確定揃い
+const SLOT_BONUS  =['⭐','🔔','🎰'];     // lvl3：通常絵柄揃い以外のボーナス揃い
 const SLOT_JACKPOT='👑';
-function slotPool(){ return SLOT_POOLS[currentStore] || ['🍒','🍋','🔔','🍇','⭐','🍀']; }
+function slotPool(){ return SLOT_POOLS[currentStore] || ['🍒','🍋','🔔','🍇','🍉','🍇','🍀','⭐']; }
 function slotTargets(lvl){
   const pool=slotPool();
-  const pick=()=>pool[Math.floor(Math.random()*pool.length)];
-  if(lvl>=4) return [SLOT_JACKPOT,SLOT_JACKPOT,SLOT_JACKPOT];
-  if(lvl===3){ const s=pick(); return [s,s,s]; }
-  if(lvl===2){ const a=pick(); let b=pick(); while(b===a) b=pick(); return [a,a,b]; }
-  // lvl 0/1: all different
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  if(lvl>=4){ const s=pick(SLOT_JACKPOTS); return [s,s,s]; }            // 👑/💎/7️⃣ の確定揃い
+  if(lvl===3){
+    // 通常絵柄揃い、または ⭐/🔔/🎰 のボーナス揃いでバリエーション
+    const s = Math.random()<0.4 ? pick(SLOT_BONUS) : pick(pool);
+    return [s,s,s];
+  }
+  if(lvl===2){ const a=pick(pool); let b=pick(pool); while(b===a) b=pick(pool); return [a,a,b]; } // リーチ
+  // lvl 0/1: 基本は全て異なる。lvl1 はたまに「両端だけ揃い＝惜しいハズレ」で煽る
   const shuf=pool.slice().sort(()=>Math.random()-0.5);
+  if(lvl===1 && Math.random()<0.35) return [shuf[0],shuf[1],shuf[0]];
   return [shuf[0],shuf[1],shuf[2]];
 }
 const stopBtns=[document.querySelector('.stopbtn[data-reel="0"]'),document.querySelector('.stopbtn[data-reel="1"]'),document.querySelector('.stopbtn[data-reel="2"]')];
