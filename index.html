@@ -1385,7 +1385,6 @@ try{
   const sv=localStorage.getItem('mg.snd.vol'); if(sv!=null){ const n=parseFloat(sv); if(isFinite(n)) soundVolume=Math.min(1,Math.max(0,n)); }
   const sm=localStorage.getItem('mg.snd.mute'); if(sm!=null) soundMuted=(sm==='1');
   const am=localStorage.getItem('mg.mode'); if(am==='slot'||am==='gacha') appMode=am;
-  const bm=localStorage.getItem('mg.budget'); if(bm==='normal'||bm==='rich') budgetMode=bm;
 }catch(e){}
 const BUDGET_MIN=1000, BUDGET_MAX=5000;
 function budgetStep(){ return budgetMode==='rich'?1000:500; }
@@ -2767,7 +2766,6 @@ const bmSeg=document.getElementById('bmSeg');
 function applyBudgetMode(m){
   if(m!=='normal'&&m!=='rich') m='normal';
   budgetMode=m;
-  try{ localStorage.setItem('mg.budget',m); }catch(e){}
   bmSeg.querySelectorAll('.seg-b').forEach(b=>{
     b.classList.toggle('on', b.dataset.bm===m);
   });
