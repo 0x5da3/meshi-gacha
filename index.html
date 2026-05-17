@@ -2010,13 +2010,36 @@ function renderHist(){
 const machine=document.getElementById('machine');
 
 /* ---- 効果音（Web Audio で「ガラガラ」を合成）---- */
-let actx, masterGain;
+// iOS Safari の画面収録は AudioContext.destination の出力を取り込まないため、
+// masterGain を MediaStreamAudioDestinationNode にも接続し、その出力を
+// <audio> 要素経由で再生することで「メディア音」として収録に乗せる。
+let actx, masterGain, msDest, msAudioEl;
 function AC(){
   if(!actx){
     actx = new (window.AudioContext||window.webkitAudioContext)();
     masterGain = actx.createGain();
     masterGain.gain.value = soundMuted ? 0 : soundVolume;
-    masterGain.connect(actx.destination);
+    let routedToStream=false;
+    try{
+      if(typeof actx.createMediaStreamDestination==='function'){
+        msDest = actx.createMediaStreamDestination();
+        masterGain.connect(msDest);
+        msAudioEl = document.createElement('audio');
+        msAudioEl.autoplay = true;
+        msAudioEl.playsInline = true;
+        msAudioEl.setAttribute('playsinline','');
+        msAudioEl.setAttribute('webkit-playsinline','');
+        msAudioEl.muted = false;
+        msAudioEl.volume = 1;
+        msAudioEl.srcObject = msDest.stream;
+        msAudioEl.style.cssText='position:absolute;width:0;height:0;opacity:0;pointer-events:none;';
+        document.body.appendChild(msAudioEl);
+        const p = msAudioEl.play();
+        if(p && typeof p.catch==='function') p.catch(()=>{});
+        routedToStream=true;
+      }
+    }catch(e){/* MediaStream 非対応環境では destination 出力のみ */}
+    if(!routedToStream) masterGain.connect(actx.destination);
   }
   return actx;
 }
