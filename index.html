@@ -489,6 +489,18 @@
   .machine.rolling{animation:shake .26s ease-in-out 2}
   @keyframes drop{0%{transform:translateY(-60px) scale(.5);opacity:0}60%{transform:translateY(8px) scale(1.05);opacity:1}100%{transform:translateY(0) scale(1)}}
   .screen.show{animation:drop .5s cubic-bezier(.2,1.5,.4,1) both}
+
+  /* ---- share ---- */
+  .sharebar{display:flex;gap:7px;margin-top:11px}
+  .sharebar button{
+    flex:1;border:2px solid var(--rosso);background:#fff;color:var(--rosso);
+    font-family:"Reggae One",cursive;font-size:12px;letter-spacing:.02em;
+    padding:9px 6px;border-radius:11px;cursor:pointer;
+    transition:background .15s,color .15s,transform .1s;
+  }
+  .sharebar button.primary{background:var(--rosso);color:#fff}
+  .sharebar button:hover{opacity:.92}
+  .sharebar button:active{transform:scale(.97)}
 </style>
 </head>
 <body>
@@ -1158,6 +1170,10 @@ function render10(list){
     <div class="tenres-s">${summary}　／　合計 ¥${sumTotal.toLocaleString()}</div>
     <div class="tennote">各カードをタップで詳細表示 👆</div>
     ${rows}
+    <div class="sharebar">
+      <button class="js-share primary">📤 10連結果をシェア</button>
+      <button class="js-copy">📋 コピー</button>
+    </div>
     <div class="remain">⚡ エネルギーはリセット。次の10連まであと${ENERGY_MAX}回！</div>`;
   screen.classList.remove('show');void screen.offsetWidth;screen.classList.add('show');
   screen.querySelectorAll('.tcard').forEach(btn=>{
@@ -1166,6 +1182,7 @@ function render10(list){
       showDetail(list[i],()=>render10(list));
     });
   });
+  wireShare(()=>tenShareText(list));
 }
 
 // 10連のうち1件を単発と同じ詳細表示（戻るで一覧へ）
@@ -1178,6 +1195,7 @@ function showDetail(res,back){
     const b=document.getElementById('backbtn');
     if(b) b.addEventListener('click',back,{once:true});
   }
+  wireShare(()=>singleShareText(res.items,res.total,res.budget-res.total,res.budget));
 }
 
 // 単発結果の中身HTML（render と showDetail で共用）
@@ -1203,13 +1221,85 @@ function resultInner(items,total,left,budget){
       <span class="tot">¥${total.toLocaleString()}<small> / ¥${budget.toLocaleString()}</small></span>
     </div>
     <div class="meter"><i style="width:${pct}%"></i></div>
-    <div class="remain">おつり ¥${left.toLocaleString()}</div>`;
+    <div class="remain">おつり ¥${left.toLocaleString()}</div>
+    <div class="sharebar">
+      <button class="js-share primary">📤 結果をシェア</button>
+      <button class="js-copy">📋 コピー</button>
+    </div>`;
 }
 
 function render(items,total,left,budget){
   const screen=document.getElementById('screen');
   screen.innerHTML=resultInner(items,total,left,budget);
   screen.classList.remove('show');void screen.offsetWidth;screen.classList.add('show');
+  wireShare(()=>singleShareText(items,total,left,budget));
+}
+
+// ===== SNS シェア =====
+function shareUrl(){ return location.origin+location.pathname; }
+
+function singleShareText(items,total,left,budget){
+  const s=STORES[currentStore];
+  const rare=budgetRarity(budget);
+  const names=items.map(it=>`${it[3]}${it[0]}`).join('\n');
+  return `${s.emoji}${s.short}ガチャ｜予算 ¥${budget.toLocaleString()}（${rare.t}）\n`
+       + `${names}\n`
+       + `合計 ¥${total.toLocaleString()}（おつり ¥${left.toLocaleString()}）\n`
+       + `#飯ガチャ`;
+}
+
+function tenShareText(list){
+  const s=STORES[currentStore];
+  const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
+  const cnt={};
+  list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
+  const summary=[4,3,2,1,0].filter(l=>cnt[l]).map(l=>`${SHORT[l]}×${cnt[l]}`).join(' ');
+  const tot=list.reduce((a,r)=>a+r.total,0);
+  return `${s.emoji}${s.short}ガチャ 10連！\n`
+       + `${summary}\n`
+       + `合計 ¥${tot.toLocaleString()}\n`
+       + `#飯ガチャ`;
+}
+
+function doShare(text){
+  const url=shareUrl();
+  if(navigator.share){
+    navigator.share({title:'飯ガチャ',text,url}).catch(()=>{});
+    return;
+  }
+  const tw='https://twitter.com/intent/tweet?text='+encodeURIComponent(text+'\n'+url);
+  window.open(tw,'_blank','noopener,noreferrer');
+}
+
+function legacyCopy(t,cb){
+  const ta=document.createElement('textarea');
+  ta.value=t;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand('copy');}catch(e){}
+  ta.remove();if(cb)cb();
+}
+
+function copyText(text,btn){
+  const full=text+'\n'+shareUrl();
+  const done=()=>{
+    if(!btn)return;
+    const o=btn.textContent;
+    btn.textContent='コピーしました ✓';
+    setTimeout(()=>{btn.textContent=o;},1600);
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(full).then(done).catch(()=>legacyCopy(full,done));
+  }else{
+    legacyCopy(full,done);
+  }
+}
+
+function wireShare(getText){
+  const sc=document.getElementById('screen');
+  const sb=sc.querySelector('.js-share');
+  const cb=sc.querySelector('.js-copy');
+  if(sb) sb.addEventListener('click',()=>doShare(getText()));
+  if(cb) cb.addEventListener('click',()=>copyText(getText(),cb));
 }
 
 function renderHist(){
