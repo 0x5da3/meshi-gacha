@@ -1020,12 +1020,13 @@
   </footer>
 </div>
 
-<!-- iOS の画面収録(ReplayKit)は Web Audio を収録しない。効果音は
-     OfflineAudioContext で WAV 化し実体 src を持つ <audio> から鳴らして
-     「メディア音声」として収録させる（JS側 sfx()）。この無音ループは
-     オーディオセッションを収録向き＆画面ロック対策に維持し、初回操作時の
-     プール解禁用 src ソースとしても使う。 -->
-<audio id="silentKeep" loop playsinline preload="auto" style="display:none"
+<!-- iOS 画面収録対応：収録される“主たるメディア要素”はこの1個だけ。
+     初回操作で無音ループ再生して収録セッションを保持し、SFX 発生時は
+     この同じ要素で WAV を再生する（JS側 sfx()/playBuf()）。要素を分ける
+     と収録が無音ループ側に固定され SFX が録れない。display:none だと
+     一部 iOS でメディア無効化され得るため不可視でも描画は残す。 -->
+<audio id="silentKeep" loop playsinline preload="auto"
+  style="position:fixed;left:-9999px;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none"
   src="data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=">
 </audio>
 
@@ -2000,13 +2001,14 @@ function renderHist(){
 
 const machine=document.getElementById('machine');
 
-/* ---- 効果音（Web Audio で「ガラガラ」を合成）---- */
-/* ---- iOS 画面収録対応 ----
-   iOS の画面収録(ReplayKit)は Web Audio の直出力も、WebAudio由来の
-   MediaStream を載せた <audio> も収録しない（WebKit既知の制約）。
-   そこで効果音は OfflineAudioContext で合成→WAV化し、実体の src を
-   持つ <audio> 要素から再生する。これなら「メディア音声」として確実に
-   収録対象になる。 */
+/* ---- 効果音（Web Audio で合成）＋ iOS 画面収録対応 ----
+   検証結果：端末スピーカーからは鳴る／同じ画面収録で YouTube 等の動画
+   音声は録れる／このアプリの音だけ録れない。これは ReplayKit が
+   「継続再生している主たるメディア要素」の音声のみ収録するため。
+   よって “無音ループ用” と “SFX用” を分けず、1個の <audio> 要素を
+   常時ループ再生（収録セッションを保持）し、その同じ要素で SFX(WAV)
+   を再生する。SFX は OfflineAudioContext で合成→WAV化し、頭に短い
+   無音を付けて収録の取りこぼしを防ぐ。 */
 let actx;
 function AC(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
 
@@ -2015,54 +2017,63 @@ function OfflineCtx(durSec){
   const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
   return new OC(1, Math.max(1,Math.ceil(SFX_SR*durSec)), SFX_SR);
 }
-// レンダリング結果(AudioBuffer)を 16bit PCM WAV にエンコード
+// レンダリング結果(AudioBuffer)を 16bit PCM WAV にエンコード。
+// leadSec ぶんの無音を先頭に付け、収録セッション再取得の取りこぼしを防ぐ
+const SFX_LEAD=0.12;
 function audioBufferToWav(buf){
   const ch=buf.numberOfChannels, len=buf.length, sr=buf.sampleRate;
-  const N=len*ch, bytes=44+N*2, ab=new ArrayBuffer(bytes), v=new DataView(ab);
+  const lead=Math.max(0,Math.round(sr*SFX_LEAD));
+  const frames=lead+len, N=frames*ch, bytes=44+N*2, ab=new ArrayBuffer(bytes), v=new DataView(ab);
   const ws=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
   ws(0,'RIFF'); v.setUint32(4,bytes-8,true); ws(8,'WAVE'); ws(12,'fmt ');
   v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,ch,true);
   v.setUint32(24,sr,true); v.setUint32(28,sr*ch*2,true); v.setUint16(32,ch*2,true);
   v.setUint16(34,16,true); ws(36,'data'); v.setUint32(40,N*2,true);
   const chans=[]; for(let c=0;c<ch;c++) chans.push(buf.getChannelData(c));
-  let o=44;
+  let o=44+lead*ch*2;   // 先頭 lead サンプルは 0（無音）のまま
   for(let i=0;i<len;i++){ for(let c=0;c<ch;c++){ let s=Math.max(-1,Math.min(1,chans[c][i])); v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true); o+=2; } }
   return ab;
 }
-// 使い回す <audio> プール（iOS は要素数が多いと不安定なので少数）
-const SFX_POOL_N=8;
-const sfxPool=[]; let sfxIdx=0, poolPrimed=false;
-for(let i=0;i<SFX_POOL_N;i++){
-  const a=document.createElement('audio');
-  a.playsInline=true; a.preload='auto'; a.style.display='none';
-  document.body.appendChild(a); sfxPool.push(a);
-}
-// 初回ユーザー操作中に各 <audio> を一度 play() し以後の自動再生を解禁
-function primePool(){
-  if(poolPrimed) return;
-  poolPrimed=true;
-  const sk=document.getElementById('silentKeep');
-  const sil=sk?sk.getAttribute('src'):'';
-  sfxPool.forEach(a=>{ try{
-    if(sil) a.src=sil;
-    a.muted=true;
-    const p=a.play();
-    if(p&&p.then) p.then(()=>{ try{a.pause();a.currentTime=0;}catch(e){} a.muted=false; }).catch(()=>{a.muted=false;});
-    else a.muted=false;
-  }catch(e){} });
-}
+// 収録される“主たるメディア要素”は1個だけ。無音ループでセッションを
+// 保持し、その同じ要素で SFX を再生する（要素を分けると収録対象が
+// 無音ループ側になり SFX が録れない、というのが今回の症状）。
+const SFX_EL=document.getElementById('silentKeep');
+const SILENT_WAV=SFX_EL?SFX_EL.getAttribute('src'):'';
+let sfxStarted=false, sfxCurUrl=null, sfxRestoreT=null;
 function sfxVol(){ return soundMuted?0:Math.min(1,Math.max(0,soundVolume)); }
+function freeCurUrl(){ if(sfxCurUrl){ try{URL.revokeObjectURL(sfxCurUrl);}catch(e){} sfxCurUrl=null; } }
+// 同じ要素を無音ループに戻し、収録セッションを途切れさせない
+function startSilentLoop(){
+  if(!SFX_EL) return;
+  try{
+    SFX_EL.loop=true; SFX_EL.muted=false; SFX_EL.volume=sfxVol();
+    if(SFX_EL.getAttribute('src')!==SILENT_WAV && SILENT_WAV) SFX_EL.src=SILENT_WAV;
+    const p=SFX_EL.play(); if(p&&p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+function onSfxEnded(){ restoreLoop(); }
+function restoreLoop(){
+  if(sfxRestoreT){ clearTimeout(sfxRestoreT); sfxRestoreT=null; }
+  if(SFX_EL) SFX_EL.removeEventListener('ended',onSfxEnded);
+  freeCurUrl();
+  startSilentLoop();
+}
 function playBuf(buf){
+  if(!SFX_EL){ return; }
   try{
     const url=URL.createObjectURL(new Blob([audioBufferToWav(buf)],{type:'audio/wav'}));
-    const a=sfxPool[sfxIdx]; sfxIdx=(sfxIdx+1)%SFX_POOL_N;
-    a.muted=false; a.volume=sfxVol(); a.src=url;
-    let cleaned=false;
-    const done=()=>{ if(cleaned) return; cleaned=true; try{URL.revokeObjectURL(url);}catch(e){} a.removeEventListener('ended',done); };
-    a.addEventListener('ended',done);
-    setTimeout(done,(buf.duration*1000|0)+1500);
-    const p=a.play(); if(p&&p.catch) p.catch(()=>done());
-  }catch(e){}
+    if(sfxRestoreT){ clearTimeout(sfxRestoreT); sfxRestoreT=null; }
+    SFX_EL.removeEventListener('ended',onSfxEnded);
+    freeCurUrl();
+    sfxCurUrl=url;
+    SFX_EL.loop=false; SFX_EL.muted=false; SFX_EL.volume=sfxVol();
+    SFX_EL.src=url;
+    try{ SFX_EL.currentTime=0; }catch(e){}
+    SFX_EL.addEventListener('ended',onSfxEnded,{once:true});
+    // ended が来ない端末向けの保険（lead 込みの長さ＋余裕）
+    sfxRestoreT=setTimeout(restoreLoop,((buf.duration+SFX_LEAD)*1000|0)+1800);
+    const p=SFX_EL.play(); if(p&&p.catch) p.catch(()=>restoreLoop());
+  }catch(e){ restoreLoop(); }
 }
 // build(ctx): ctx.destination 向けに t=0 起点でスケジュールする合成
 function sfx(durSec,build){
@@ -2079,16 +2090,14 @@ function sfx(durSec,build){
   }catch(e){}
 }
 function masterOut(ctx){ return ctx.destination; }
-function applyMasterVolume(){ const v=sfxVol(); sfxPool.forEach(a=>{ try{a.volume=v;}catch(e){} }); }
+function applyMasterVolume(){ if(SFX_EL){ try{ SFX_EL.volume=sfxVol(); }catch(e){} } }
 
-// 最初のユーザー操作で context を起こし、無音ループと <audio> プールを解禁
+// 最初のユーザー操作で context を起こし、収録セッション保持の無音ループを開始
 let audioUnlocked=false;
 function unlockAudio(){
   try{
     const ctx=AC(); if(ctx&&ctx.state==='suspended') ctx.resume();
-    const sk=document.getElementById('silentKeep');
-    if(sk){ const ps=sk.play(); if(ps&&ps.catch) ps.catch(()=>{}); }
-    primePool();
+    if(!sfxStarted){ sfxStarted=true; startSilentLoop(); }
     audioUnlocked=true;
   }catch(e){}
 }
