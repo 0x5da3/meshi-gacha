@@ -2049,6 +2049,22 @@ function AC(){
   return actx;
 }
 function masterOut(ctx){ return masterGain || ctx.destination; }
+
+// 初回ユーザー操作で AudioContext を温めておく（最初の SPIN の初期化遅延を回避）
+(function primeAudioOnFirstGesture(){
+  const warm=()=>{
+    try{
+      const ctx=AC();
+      if(ctx.state==='suspended') ctx.resume();
+    }catch(e){}
+    document.removeEventListener('pointerdown',warm,true);
+    document.removeEventListener('touchstart',warm,true);
+    document.removeEventListener('keydown',warm,true);
+  };
+  document.addEventListener('pointerdown',warm,true);
+  document.addEventListener('touchstart',warm,true);
+  document.addEventListener('keydown',warm,true);
+})();
 function applyMasterVolume(){
   if(!masterGain || !actx) return;
   const v = soundMuted ? 0 : soundVolume;
