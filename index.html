@@ -1020,10 +1020,11 @@
   </footer>
 </div>
 
-<!-- iOS の画面収録(ReplayKit)は Web Audio 直出力を録れないため、効果音を
-     MediaStream 経由でこの <audio> から鳴らし「メディア音声」として収録対象にする。
-     さらに無音ループでオーディオセッションを収録向きに維持する。 -->
-<audio id="capAudio" playsinline style="display:none"></audio>
+<!-- iOS の画面収録(ReplayKit)は Web Audio を収録しない。効果音は
+     OfflineAudioContext で WAV 化し実体 src を持つ <audio> から鳴らして
+     「メディア音声」として収録させる（JS側 sfx()）。この無音ループは
+     オーディオセッションを収録向き＆画面ロック対策に維持し、初回操作時の
+     プール解禁用 src ソースとしても使う。 -->
 <audio id="silentKeep" loop playsinline preload="auto" style="display:none"
   src="data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=">
 </audio>
@@ -1573,11 +1574,7 @@ function dispenseCapsule(){
   pendingResult=preSingle||computeResult(); preSingle=null;
   const rare=budgetRarity(pendingResult.budget);
   mustOpen = (confirmThreshold!=null && rare.lvl>=confirmThreshold);
-  try{
-    const ctx=AC();
-    if(ctx.state==='suspended') ctx.resume();
-    dispenseSound(ctx,ctx.currentTime,rare.lvl);
-  }catch(e){}
+  sfx(1.5, ctx=>dispenseSound(ctx,0,rare.lvl));
   renderCapsuleView();
 }
 
@@ -1618,12 +1615,7 @@ function openCapsule(){
   mustOpen=false;
   const r=pendingResult;
   const rare=budgetRarity(r.budget);
-  try{
-    const ctx=AC();
-    if(ctx.state==='suspended') ctx.resume();
-    popOpen(ctx,ctx.currentTime);
-    if(rare.lvl>=2) fanfare(ctx,ctx.currentTime+0.10,rare.lvl);
-  }catch(e){}
+  sfx(rare.lvl>=2?2.0:0.7, ctx=>{ popOpen(ctx,0); if(rare.lvl>=2) fanfare(ctx,0.10,rare.lvl); });
 
   const cap=document.getElementById('bigcap');
   if(cap) cap.classList.add('opening');
@@ -1770,11 +1762,7 @@ function dispenseTen(){
   pendingTen=preTen||Array.from({length:10},()=>computeResult()); preTen=null;
   const mr=maxRareOf(pendingTen);
   mustOpen = (confirmThreshold!=null && mr.lvl>=confirmThreshold);
-  try{
-    const ctx=AC();
-    if(ctx.state==='suspended') ctx.resume();
-    dispenseSound(ctx,ctx.currentTime,mr.lvl);
-  }catch(e){}
+  sfx(1.5, ctx=>dispenseSound(ctx,0,mr.lvl));
   const screen=document.getElementById('screen');
   const caps=pendingTen.map((r,i)=>{
     const rr=budgetRarity(r.budget);
@@ -1799,12 +1787,7 @@ function openTen(){
   mustOpen=false;
   const list=pendingTen;
   const mr=maxRareOf(list);
-  try{
-    const ctx=AC();
-    if(ctx.state==='suspended') ctx.resume();
-    popOpenMulti(ctx,ctx.currentTime,8);
-    if(mr.lvl>=2) fanfare(ctx,ctx.currentTime+0.8,mr.lvl);
-  }catch(e){}
+  sfx(mr.lvl>=2?2.6:1.2, ctx=>{ popOpenMulti(ctx,0,8); if(mr.lvl>=2) fanfare(ctx,0.8,mr.lvl); });
   document.querySelectorAll('#tengrid .scap').forEach((el,i)=>{
     setTimeout(()=>el.classList.add('opening'),i*45);
   });
@@ -2017,58 +2000,99 @@ function renderHist(){
 const machine=document.getElementById('machine');
 
 /* ---- 効果音（Web Audio で「ガラガラ」を合成）---- */
-let actx, masterGain, streamDest, capAudioEl, directOut=false;
-function AC(){
-  if(!actx){
-    actx = new (window.AudioContext||window.webkitAudioContext)();
-    masterGain = actx.createGain();
-    masterGain.gain.value = soundMuted ? 0 : soundVolume;
-    capAudioEl = document.getElementById('capAudio');
-    // iOS の画面収録(ReplayKit)は Web Audio の直出力を録れない。
-    // 出力を MediaStream 経由で <audio> 要素から鳴らすと「メディア音声」
-    // 扱いになり収録対象になる。play() 失敗時のみスピーカー直結に保険。
-    let viaMedia=false;
-    try{
-      if(capAudioEl && typeof actx.createMediaStreamDestination==='function'){
-        streamDest = actx.createMediaStreamDestination();
-        masterGain.connect(streamDest);
-        capAudioEl.srcObject = streamDest.stream;
-        capAudioEl.muted = false;
-        const p = capAudioEl.play();
-        if(p && p.catch) p.catch(()=>ensureDirectOut());
-        viaMedia=true;
-      }
-    }catch(e){ viaMedia=false; }
-    if(!viaMedia){ masterGain.connect(actx.destination); directOut=true; }
-  }
-  return actx;
+/* ---- iOS 画面収録対応 ----
+   iOS の画面収録(ReplayKit)は Web Audio の直出力も、WebAudio由来の
+   MediaStream を載せた <audio> も収録しない（WebKit既知の制約）。
+   そこで効果音は OfflineAudioContext で合成→WAV化し、実体の src を
+   持つ <audio> 要素から再生する。これなら「メディア音声」として確実に
+   収録対象になる。 */
+let actx;
+function AC(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
+
+const SFX_SR=44100;
+function OfflineCtx(durSec){
+  const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+  return new OC(1, Math.max(1,Math.ceil(SFX_SR*durSec)), SFX_SR);
 }
-// MediaStream 再生が不可だった場合の保険：端末スピーカーには必ず出す
-function ensureDirectOut(){
-  if(directOut || !masterGain || !actx) return;
-  try{ masterGain.connect(actx.destination); directOut=true; }catch(e){}
+// レンダリング結果(AudioBuffer)を 16bit PCM WAV にエンコード
+function audioBufferToWav(buf){
+  const ch=buf.numberOfChannels, len=buf.length, sr=buf.sampleRate;
+  const N=len*ch, bytes=44+N*2, ab=new ArrayBuffer(bytes), v=new DataView(ab);
+  const ws=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+  ws(0,'RIFF'); v.setUint32(4,bytes-8,true); ws(8,'WAVE'); ws(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,ch,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*ch*2,true); v.setUint16(32,ch*2,true);
+  v.setUint16(34,16,true); ws(36,'data'); v.setUint32(40,N*2,true);
+  const chans=[]; for(let c=0;c<ch;c++) chans.push(buf.getChannelData(c));
+  let o=44;
+  for(let i=0;i<len;i++){ for(let c=0;c<ch;c++){ let s=Math.max(-1,Math.min(1,chans[c][i])); v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true); o+=2; } }
+  return ab;
 }
-// 最初のユーザー操作で AudioContext を起こし、収録用 <audio> を再生開始。
-// 無音ループでオーディオセッションを収録向きに保持する（画面ロック対策にも）。
+// 使い回す <audio> プール（iOS は要素数が多いと不安定なので少数）
+const SFX_POOL_N=8;
+const sfxPool=[]; let sfxIdx=0, poolPrimed=false;
+for(let i=0;i<SFX_POOL_N;i++){
+  const a=document.createElement('audio');
+  a.playsInline=true; a.preload='auto'; a.style.display='none';
+  document.body.appendChild(a); sfxPool.push(a);
+}
+// 初回ユーザー操作中に各 <audio> を一度 play() し以後の自動再生を解禁
+function primePool(){
+  if(poolPrimed) return;
+  poolPrimed=true;
+  const sk=document.getElementById('silentKeep');
+  const sil=sk?sk.getAttribute('src'):'';
+  sfxPool.forEach(a=>{ try{
+    if(sil) a.src=sil;
+    a.muted=true;
+    const p=a.play();
+    if(p&&p.then) p.then(()=>{ try{a.pause();a.currentTime=0;}catch(e){} a.muted=false; }).catch(()=>{a.muted=false;});
+    else a.muted=false;
+  }catch(e){} });
+}
+function sfxVol(){ return soundMuted?0:Math.min(1,Math.max(0,soundVolume)); }
+function playBuf(buf){
+  try{
+    const url=URL.createObjectURL(new Blob([audioBufferToWav(buf)],{type:'audio/wav'}));
+    const a=sfxPool[sfxIdx]; sfxIdx=(sfxIdx+1)%SFX_POOL_N;
+    a.muted=false; a.volume=sfxVol(); a.src=url;
+    let cleaned=false;
+    const done=()=>{ if(cleaned) return; cleaned=true; try{URL.revokeObjectURL(url);}catch(e){} a.removeEventListener('ended',done); };
+    a.addEventListener('ended',done);
+    setTimeout(done,(buf.duration*1000|0)+1500);
+    const p=a.play(); if(p&&p.catch) p.catch(()=>done());
+  }catch(e){}
+}
+// build(ctx): ctx.destination 向けに t=0 起点でスケジュールする合成
+function sfx(durSec,build){
+  if(soundMuted) return;
+  let octx; try{ octx=OfflineCtx(durSec); }catch(e){ return; }
+  octx.__sfx=true;
+  try{ build(octx); }catch(e){ return; }
+  let used=false;
+  const once=b=>{ if(used||!b) return; used=true; playBuf(b); };
+  try{
+    octx.oncomplete=e=>once(e.renderedBuffer);   // 旧 webkit 用（promise 非対応）
+    const r=octx.startRendering();
+    if(r&&r.then) r.then(once).catch(()=>{});
+  }catch(e){}
+}
+function masterOut(ctx){ return ctx.destination; }
+function applyMasterVolume(){ const v=sfxVol(); sfxPool.forEach(a=>{ try{a.volume=v;}catch(e){} }); }
+
+// 最初のユーザー操作で context を起こし、無音ループと <audio> プールを解禁
 let audioUnlocked=false;
 function unlockAudio(){
   try{
-    const ctx=AC();
-    if(ctx.state==='suspended') ctx.resume();
+    const ctx=AC(); if(ctx&&ctx.state==='suspended') ctx.resume();
     const sk=document.getElementById('silentKeep');
     if(sk){ const ps=sk.play(); if(ps&&ps.catch) ps.catch(()=>{}); }
-    if(capAudioEl && !directOut){ const pc=capAudioEl.play(); if(pc&&pc.catch) pc.catch(()=>{}); }
+    primePool();
     audioUnlocked=true;
   }catch(e){}
 }
 ['pointerdown','touchend','click','keydown'].forEach(ev=>
   window.addEventListener(ev,unlockAudio,{passive:true}));
-function masterOut(ctx){ return masterGain || ctx.destination; }
-function applyMasterVolume(){
-  if(!masterGain || !actx) return;
-  const v = soundMuted ? 0 : soundVolume;
-  masterGain.gain.setTargetAtTime(v, actx.currentTime, 0.01);
-}
 
 function noiseBuffer(ctx,dur){
   const len=Math.floor(ctx.sampleRate*dur);
@@ -2253,26 +2277,22 @@ function fanfare(ctx,t,lvl){
   }
 }
 
-function playGacha(durationMs){
-  const ctx=AC();
-  if(ctx.state==='suspended') ctx.resume();
-  const t0=ctx.currentTime;
-  const sec=durationMs/1000;
+function buildGacha(ctx,t0,sec){
   crankRumble(ctx,t0,sec);
-  // 約1秒間、不規則にカラカラ鳴らす
+  // 不規則にカラカラ鳴らす
   let t=t0+0.02;
   while(t<t0+sec-0.05){
     rattleHit(ctx,t,0.14+Math.random()*0.16);
     t+=0.045+Math.random()*0.075;
   }
 }
+function playGacha(durationMs){
+  const sec=durationMs/1000;
+  sfx(sec+0.3, ctx=>buildGacha(ctx,0,sec));
+}
 
 // 10連用：重厚＆密なガラガラ＋上昇ビルドアップ
-function playGachaBig(durationMs){
-  const ctx=AC();
-  if(ctx.state==='suspended') ctx.resume();
-  const t0=ctx.currentTime;
-  const sec=durationMs/1000;
+function buildGachaBig(ctx,t0,sec){
   crankRumble(ctx,t0,sec);
   // 低音レイヤーを重ねて厚みを出す
   const sub=ctx.createOscillator(); sub.type='sawtooth';
@@ -2300,6 +2320,10 @@ function playGachaBig(durationMs){
   swg.gain.exponentialRampToValueAtTime(0.0006,t0+sec+0.05);
   sweep.connect(swg).connect(masterOut(ctx));
   sweep.start(t0+sec*0.55); sweep.stop(t0+sec+0.06);
+}
+function playGachaBig(durationMs){
+  const sec=durationMs/1000;
+  sfx(sec+0.4, ctx=>buildGachaBig(ctx,0,sec));
 }
 
 // 10連の開封：プラスチックの連続パカパカ＋締めのアクセント
@@ -2334,9 +2358,7 @@ function modeAnimMs(lvl){
 }
 function safeSound(ten,lvl){
   try{
-    const ctx=AC();
-    if(ctx.state==='suspended') ctx.resume();
-    buttonClick(ctx,ctx.currentTime);
+    sfx(0.25, ctx=>buttonClick(ctx,0));
     const dur=Math.max(525,modeAnimMs(lvl|0)-60);
     if(ten) playGachaBig(dur); else playGacha(dur);
   }catch(e){/* 音声が使えない環境でもガチャは動かす */}
@@ -2544,7 +2566,7 @@ async function runSlot(lvl){
       if(reelFaceEls[i]) reelFaceEls[i].textContent=targets[i];
       if(reelEls[i]){ reelEls[i].classList.remove('spinning'); reelEls[i].classList.add('stop'); }
       if(stopBtns[i]){ stopBtns[i].classList.add('done'); stopBtns[i].disabled=true; }
-      try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); rattleHit(ctx,ctx.currentTime,0.22); }catch(e){}
+      try{ sfx(0.2, ctx=>rattleHit(ctx,0,0.22)); }catch(e){}
       // 押下ごとにモニタを 1 シーン進める
       applyMonBeat(beats[pressN]);
       if(stopped.every(Boolean)){
@@ -2561,7 +2583,7 @@ async function runSlot(lvl){
   if(win){
     if(slotEl){ slotEl.classList.add('win'); }
     if(slotFlashEl){ slotFlashEl.classList.remove('on'); void slotFlashEl.offsetWidth; slotFlashEl.classList.add('on'); }
-    try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); fanfare(ctx,ctx.currentTime+0.02,Math.min(4,lvl)); }catch(e){}
+    try{ sfx(2.2, ctx=>fanfare(ctx,0,Math.min(4,lvl))); }catch(e){}
     await sleep(420);
   }
 
