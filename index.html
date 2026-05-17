@@ -2608,7 +2608,8 @@ function applyMode(m){
     b.setAttribute('aria-selected',on?'true':'false');
   });
   if(!spinning){
-    if(m==='slot') slotIdle(); else monitorIdle();
+    monitorIdle();           // モニタは両モード共通の素材として常時更新
+    if(m==='slot') slotIdle();
   }
   syncSlotLockDefault();
 }
@@ -2685,7 +2686,8 @@ function applyStore(key){
   renderRates(); renderSpec(); renderChance();
   syncSlotLockDefault();
   if(!spinning){
-    if(appMode==='slot') slotIdle(); else monitorIdle();   // 演出中の店舗切替は乱さない
+    monitorIdle();              // モニタは両モードで使うので常に更新（スロットでも表示中）
+    if(appMode==='slot') slotIdle();
   }
 }
 
