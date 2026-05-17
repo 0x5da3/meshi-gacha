@@ -78,6 +78,22 @@
   .ssbtn:not(.on):hover{background:rgba(200,16,46,.1)}
   .ssbtn:active{transform:scale(.96)}
 
+  /* ---- mode switcher (ガチャ / スロット) ---- */
+  .modesw{
+    display:inline-flex;gap:0;background:rgba(255,255,255,.6);
+    border:2px solid var(--rosso);border-radius:99px;padding:3px;margin:6px 0 0 6px;
+    box-shadow:2px 2px 0 rgba(0,0,0,.12);vertical-align:middle;
+  }
+  .msbtn{
+    border:0;background:none;cursor:pointer;
+    font-family:"Reggae One",cursive;font-size:12px;
+    padding:6px 11px;border-radius:99px;color:var(--rosso);
+    transition:background .15s,color .15s;letter-spacing:.02em;
+  }
+  .msbtn.on{background:var(--rosso);color:#fff}
+  .msbtn:not(.on):hover{background:rgba(200,16,46,.1)}
+  .msbtn:active{transform:scale(.96)}
+
   /* ---- machine ---- */
   .machine{
     background:var(--rosso);
@@ -158,6 +174,60 @@
     box-shadow:inset 0 0 0 2px rgba(255,210,80,.5),
       0 0 18px rgba(255,200,60,.7), 0 4px 0 var(--rosso-dark);
   }
+
+  /* ---- slot machine (3 reels) ---- */
+  .slot{
+    position:relative;z-index:1;height:106px;margin-bottom:12px;
+    display:flex;gap:6px;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,#1a0a14,#3a0a18 60%,#1a0a14);
+    border:4px solid var(--rosso-dark);border-radius:14px;padding:8px 10px;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),
+      inset 0 9px 22px rgba(0,0,0,.62), 0 4px 0 var(--rosso-dark);
+  }
+  .slot .reel{
+    flex:1;height:82px;border-radius:9px;
+    background:linear-gradient(180deg,#fff 0%,#f4f8ff 60%,#dbe3ee 100%);
+    border:3px solid #1c1f2e;
+    box-shadow:inset 0 -8px 0 rgba(0,0,0,.13), inset 0 7px 0 rgba(255,255,255,.65),
+      inset 0 0 0 2px rgba(0,0,0,.08);
+    display:grid;place-items:center;overflow:hidden;position:relative;
+  }
+  .slot .reel::before{
+    content:"";position:absolute;left:0;right:0;top:50%;height:30px;
+    transform:translateY(-50%);pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,210,80,0) 0,rgba(255,210,80,.12) 50%,rgba(255,210,80,0));
+  }
+  .slot .slot-face{
+    font-size:46px;line-height:1;display:block;
+    filter:drop-shadow(0 2px 1px rgba(0,0,0,.18));
+    will-change:transform,filter;
+  }
+  .slot .reel.spinning .slot-face{
+    animation:slotSpin .08s linear infinite;filter:blur(.7px) drop-shadow(0 2px 1px rgba(0,0,0,.18));
+  }
+  @keyframes slotSpin{
+    0%{transform:translateY(-26px)}100%{transform:translateY(26px)}
+  }
+  .slot .reel.stop .slot-face{animation:slotStop .36s cubic-bezier(.2,1.55,.4,1) both}
+  @keyframes slotStop{
+    0%{transform:translateY(-34px)}55%{transform:translateY(8px)}80%{transform:translateY(-3px)}100%{transform:translateY(0)}
+  }
+  .slot-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:5;border-radius:10px}
+  .slot-flash.on{animation:monFl .55s ease both}
+  .slot.win{
+    box-shadow:inset 0 0 0 2px rgba(255,210,80,.6),
+      inset 0 9px 22px rgba(0,0,0,.5),
+      0 0 22px rgba(255,200,60,.8), 0 4px 0 var(--rosso-dark);
+    animation:slotWinPulse .8s ease infinite alternate;
+  }
+  .slot.win .reel{box-shadow:inset 0 -8px 0 rgba(210,140,0,.35), inset 0 7px 0 rgba(255,255,255,.7), 0 0 10px rgba(255,210,80,.7)}
+  @keyframes slotWinPulse{from{filter:brightness(1)}to{filter:brightness(1.16)}}
+
+  /* mode visibility */
+  .machine .slot{display:none}
+  .machine.mode-gacha .monitor{display:none}
+  .machine.mode-slot  .monitor{display:none}
+  .machine.mode-slot  .slot{display:flex}
 
   .capsules{position:absolute;inset:0}
   .cap{
@@ -552,6 +622,8 @@
     .shock,.rbanner,.coin,.cutin,.heat,.chancefx{display:none}
     .monitor.heat,.mon-anim .mon-emoji,.mon-anim .mon-cap,
     .mon-stage.reach .mon-cap,.mon-flash.on{animation:none}
+    .slot .reel.spinning .slot-face,.slot .reel.stop .slot-face,
+    .slot-flash.on,.slot.win{animation:none}
   }
 
   /* ---- alcohol on/off toggle ---- */
@@ -763,14 +835,24 @@
       <button class="ssbtn on" data-store="saizeriya" role="tab" aria-selected="true">🍝 サイゼリヤ</button>
       <button class="ssbtn" data-store="ohsho" role="tab" aria-selected="false">🥟 餃子の王将</button>
     </div>
+    <div class="modesw" id="modesw" role="tablist" aria-label="モードを切り替え">
+      <button class="msbtn on" data-mode="gacha" role="tab" aria-selected="true">🎰 ガチャ</button>
+      <button class="msbtn" data-mode="slot" role="tab" aria-selected="false">🎲 スロット</button>
+    </div>
   </header>
 
-  <div class="machine" id="machine">
+  <div class="machine mode-gacha" id="machine">
     <div class="monitor" id="monitor" aria-hidden="true">
       <span class="mon-tag" id="monTag"></span>
       <div class="mon-stage" id="monStage"></div>
       <div class="mon-scan"></div>
       <div class="mon-flash" id="monFlash"></div>
+    </div>
+    <div class="slot" id="slot" aria-hidden="true">
+      <div class="reel" id="reel0"><span class="slot-face">🎰</span></div>
+      <div class="reel" id="reel1"><span class="slot-face">🎰</span></div>
+      <div class="reel" id="reel2"><span class="slot-face">🎰</span></div>
+      <div class="slot-flash" id="slotFlash"></div>
     </div>
     <div class="dome"><div class="capsules" id="caps"></div></div>
     <div class="panel">
@@ -1187,9 +1269,12 @@ let alcoholOn=true;      // アルコール込み/抜き切り替え
 let confirmThreshold=4; // このレア度(lvl)以上で開封必須（未開封ロック）。nullでオフ。初期値はSR
 // サウンド設定（localStorage に保存）
 let soundMuted=false, soundVolume=0.8;
+// 演出モード：'gacha'（モニタなし）／'slot'（絵柄揃え）
+let appMode='gacha';
 try{
   const sv=localStorage.getItem('mg.snd.vol'); if(sv!=null){ const n=parseFloat(sv); if(isFinite(n)) soundVolume=Math.min(1,Math.max(0,n)); }
   const sm=localStorage.getItem('mg.snd.mute'); if(sm!=null) soundMuted=(sm==='1');
+  const am=localStorage.getItem('mg.mode'); if(am==='slot'||am==='gacha') appMode=am;
 }catch(e){}
 let mustOpen=false;        // 未開封ロック中フラグ
 const ENERGY_MAX=10;
@@ -2081,25 +2166,19 @@ function popOpenMulti(ctx,t,n){
 const crank=document.getElementById('crank');
 let spinning=false;
 
-// モニタ演出の総尺と音を合わせる（演出が長いのに音が早く切れて
-// 「音が消えた」体感にならないように、レア度に応じて尺を伸ばす）
-function monitorMs(lvl){
+// モード別の演出尺。効果音はこの長さに合わせて伸ばす
+function modeAnimMs(lvl){
   if(typeof monReduced==='function' && monReduced()) return 520;
-  let d=520+520;                       // intro + journey0
-  if(lvl>=1) d+=520;                   // journey1
-  if(lvl>=2) d+=900;                   // reach
-  if(lvl>=3) d+=980;                   // super
-  if(lvl>=4) d+=760+1080;              // 激アツ + win
-  else if(lvl===3) d+=760;             // 大当たり!?
-  else d+=680;                         // miss
-  return d;
+  if(appMode==='slot') return 700 + (lvl|0)*260;       // slotMs と一致
+  // ガチャ：モニタなし、ドームのコロコロ感だけで短く
+  return 680;
 }
 function safeSound(ten,lvl){
   try{
     const ctx=AC();
     if(ctx.state==='suspended') ctx.resume();
     buttonClick(ctx,ctx.currentTime);
-    const dur=Math.max(525,monitorMs(lvl|0)-60);
+    const dur=Math.max(525,modeAnimMs(lvl|0)-60);
     if(ten) playGachaBig(dur); else playGacha(dur);
   }catch(e){/* 音声が使えない環境でもガチャは動かす */}
 }
@@ -2179,6 +2258,75 @@ async function runMonitor(lvl){
   }
 }
 
+// ===== スロット演出（3 リール絵柄揃え）=====
+const slotEl=document.getElementById('slot');
+const slotFlashEl=document.getElementById('slotFlash');
+const reelEls=[document.getElementById('reel0'),document.getElementById('reel1'),document.getElementById('reel2')];
+const reelFaceEls=reelEls.map(r=>r&&r.querySelector('.slot-face'));
+const SLOT_POOLS={
+  saizeriya:['🍝','🍅','🧀','🍷','🐌','⭐'],
+  ohsho    :['🥟','🔥','🍳','🐉','🍚','⭐'],
+  cocoichi :['🍛','🌶️','🍚','🥄','🍻','⭐'],
+};
+const SLOT_JACKPOT='👑';
+function slotPool(){ return SLOT_POOLS[currentStore] || ['🍒','🍋','🔔','🍇','⭐','🍀']; }
+function slotTargets(lvl){
+  const pool=slotPool();
+  const pick=()=>pool[Math.floor(Math.random()*pool.length)];
+  if(lvl>=4) return [SLOT_JACKPOT,SLOT_JACKPOT,SLOT_JACKPOT];
+  if(lvl===3){ const s=pick(); return [s,s,s]; }
+  if(lvl===2){ const a=pick(); let b=pick(); while(b===a) b=pick(); return [a,a,b]; }
+  // lvl 0/1: all different
+  const shuf=pool.slice().sort(()=>Math.random()-0.5);
+  return [shuf[0],shuf[1],shuf[2]];
+}
+function slotIdle(){
+  if(!reelFaceEls[0]) return;
+  const pool=slotPool();
+  reelFaceEls.forEach((f,i)=>{ if(f) f.textContent=pool[i%pool.length]; });
+  reelEls.forEach(r=>r&&r.classList.remove('spinning','stop'));
+  if(slotEl) slotEl.classList.remove('win');
+}
+function slotMs(lvl){
+  if(monReduced()) return 520;
+  return 700 + lvl*260;            // 700..1740ms
+}
+async function runSlot(lvl){
+  if(!slotEl||!reelFaceEls[0]) return;
+  slotEl.classList.remove('win');
+  const targets=slotTargets(lvl);
+  const pool=slotPool();
+  if(monReduced()){
+    reelFaceEls.forEach((f,i)=>{ if(f) f.textContent=targets[i]; });
+    if(lvl>=3 && slotEl) slotEl.classList.add('win');
+    await sleep(520); return;
+  }
+  reelEls.forEach(r=>{ r.classList.remove('stop'); r.classList.add('spinning'); });
+  // スピン中はランダム絵柄を高速で差し替え
+  const tickers=reelFaceEls.map(f=>setInterval(()=>{
+    if(f) f.textContent=pool[Math.floor(Math.random()*pool.length)];
+  },70));
+  const stopAt=[680, 1020, 1380+lvl*120];   // 左→中→右の順に停止
+  const start=performance.now();
+  for(let i=0;i<3;i++){
+    const wait=stopAt[i]-(performance.now()-start);
+    if(wait>0) await sleep(wait);
+    clearInterval(tickers[i]);
+    if(reelFaceEls[i]) reelFaceEls[i].textContent=targets[i];
+    reelEls[i].classList.remove('spinning');
+    reelEls[i].classList.add('stop');
+    try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); rattleHit(ctx,ctx.currentTime,0.22); }catch(e){}
+  }
+  await sleep(220);
+  const win = targets[0]===targets[1] && targets[1]===targets[2];
+  if(win){
+    if(slotEl){ slotEl.classList.add('win'); }
+    if(slotFlashEl){ slotFlashEl.classList.remove('on'); void slotFlashEl.offsetWidth; slotFlashEl.classList.add('on'); }
+    try{ const ctx=AC(); if(ctx.state==='suspended') ctx.resume(); fanfare(ctx,ctx.currentTime+0.02,Math.min(4,lvl)); }catch(e){}
+    await sleep(420);
+  }
+}
+
 function startGacha(){
   if(spinning) return;
   if(mustOpen){ flashLock(); return; }
@@ -2201,7 +2349,10 @@ function startGacha(){
   machine.classList.add('rolling');
   setTimeout(()=>machine.classList.remove('rolling'),520);
   (async()=>{
-    try{ await runMonitor(lvl); }catch(e){ console.error(e); }
+    try{
+      if(appMode==='slot') await runSlot(lvl);
+      else                 await sleep(modeAnimMs(lvl));   // ガチャ：モニタ無し
+    }catch(e){ console.error(e); }
     crank.classList.remove('turning');
     try{
       if(tenMode){
@@ -2213,13 +2364,36 @@ function startGacha(){
         renderEnergy();
       }
     }catch(e){ console.error(e); }
-    monitorIdle();
+    if(appMode!=='slot') monitorIdle();   // スロットは結果を次回まで残す
     spinning=false;
     crank.disabled=false;
   })();
 }
 
 crank.addEventListener('click',startGacha);   // ガチャポンのレバーが開始アクション
+
+// モード切替（ガチャ / スロット）
+const modesw=document.getElementById('modesw');
+function applyMode(m){
+  if(m!=='gacha' && m!=='slot') m='gacha';
+  appMode=m;
+  try{ localStorage.setItem('mg.mode',m); }catch(e){}
+  machine.classList.toggle('mode-gacha', m==='gacha');
+  machine.classList.toggle('mode-slot',  m==='slot');
+  modesw.querySelectorAll('.msbtn').forEach(b=>{
+    const on=b.dataset.mode===m;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-selected',on?'true':'false');
+  });
+  if(!spinning){
+    if(m==='slot') slotIdle(); else monitorIdle();
+  }
+}
+modesw.addEventListener('click',e=>{
+  const b=e.target.closest('.msbtn'); if(!b) return;
+  applyMode(b.dataset.mode);
+});
+applyMode(appMode);
 
 // アルコールあり/なし 切り替え
 const alctog=document.getElementById('alctog');
@@ -2285,7 +2459,9 @@ function applyStore(key){
     b.setAttribute('aria-selected',on?'true':'false');
   });
   renderRates(); renderSpec(); renderChance();
-  if(!spinning) monitorIdle();   // 演出中の店舗切替ではモニタを乱さない
+  if(!spinning){
+    if(appMode==='slot') slotIdle(); else monitorIdle();   // 演出中の店舗切替は乱さない
+  }
 }
 storesw.addEventListener('click',e=>{
   const b=e.target.closest('.ssbtn');
