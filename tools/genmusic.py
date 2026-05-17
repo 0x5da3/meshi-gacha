@@ -597,115 +597,115 @@ def build_ohsho(rush):
     return sig, loop, tail
 
 
-# ---------- COCOICHI: hypnotic ethnic / phrygian ----------
+# ---------- COCOICHI: Indian raga "スパイスの調べ" (user-provided) ----------
 def build_cocoichi(rush):
-    # hypnotic phrygian "exotic curry house": a pulsing tonic pedal, a santur
-    # ostinato over a bII->I "Spanish" cadence, a buzzy saz lead via the Kanno
-    # motif engine + a consonant counter voice, and a darbuka groove. Lead
-    # gets its own delayed bus; reverb send is high-passed to keep it tight.
-    bpm = 140 if rush else 100
+    # Faithful port of the user's Bilaval-raga piece: sitar/sarod-ish plucked
+    # melody over a tambura drone, with a tabla groove. Blended to sit with
+    # the other tracks (levels trimmed, spacious hp'd reverb, whole bars).
+    bpm = 124 if rush else 100
     beats = 4
-    bars = 4
     spb = 60.0 / bpm
     sd = spb / 4.0
-    loop = bars * beats * spb
-    tail = 1.8
-    buf = np.zeros(int((loop + tail) * SR))
-    lead = np.zeros_like(buf)                    # lead routed through a delay
-    drum = np.zeros_like(buf)
     global _TP
-    _TP = 2 if rush else 0                       # RUSH: whole-step chorus lift
-    # C phrygian: C Db Eb F G Ab Bb -> 0 1 3 5 7 8 10
-    scale = [0, 1, 3, 5, 7, 8, 10]
-    # i  i  bII(Db)  i  — the iconic phrygian cadence at the loop seam
-    Cm = [-12, 0, 3, 7, 10]                      # Cm7
-    Db = [-11, 1, 5, 8, 13]                      # Dbmaj (bII colour)
-    chord_bars = [Cm, Cm, Db, Cm]
+    _TP = 2 if rush else 0                        # RUSH: whole-step lift
+    spice = 3 if rush else 2
 
-    # --- pulsing tonic pedal (lighter than a static saw wall) ---
-    pedlen = int(loop * SR)
-    tt = np.arange(pedlen) / SR
-    ped = (osc('sine', hz(-24), loop)[:pedlen] * 0.6
-           + osc('sine', hz(-12), loop)[:pedlen] * 0.25
-           + osc('saw', hz(-12), loop)[:pedlen] * 0.18)
-    fc = 360 + 300 * (0.5 + 0.5 * np.sin(2 * np.pi * 2 * tt / loop))   # 2 cyc
-    ped = onepole_lp_var(ped, fc)
-    trem = 1.0 - 0.30 * (0.5 + 0.5 * np.sin(2 * np.pi * (bars * beats) * tt / loop))
-    add(buf, ped * trem * 0.15, 0)
+    F = {'Sa3': -12, 'Sa': 0, 'Re': 2, 'Ga': 4, 'Ma': 5, 'Pa': 7,
+         'Dha': 9, 'Ni': 11, 'Sa5': 12, 'Re5': 14, 'Ga5': 16,
+         'Ma5': 17, 'Pa5': 19, 'Dha5': 21, 'Sa6': 24}
+    phrase = [('Sa', 3), ('Re', 1), ('Ga', 2), ('Pa', 2), ('Ga', 1), ('Re', 1), ('Sa', 2),
+              ('Pa', 2), ('Dha', 2), ('Pa', 1), ('Ma', 1), ('Ga', 2), ('Re', 2),
+              ('Ga', 2), ('Pa', 2), ('Dha', 2), ('Sa5', 2), ('Ni', 1), ('Dha', 1), ('Pa', 2),
+              ('Ma', 2), ('Ga', 2), ('Re', 2), ('Sa', 4),
+              ('Pa', 2), ('Dha', 1), ('Sa5', 1), ('Re5', 2), ('Sa5', 2), ('Dha', 2), ('Pa', 2),
+              ('Ga', 2), ('Pa', 1), ('Ma', 1), ('Ga', 2), ('Re', 1), ('Sa', 1), ('Sa', 4)]
+    mlen = sum(l for _, l in phrase)
+    bars = max(1, -(-mlen // 16))                 # ceil to whole bars
+    steps = bars * 16
+    loop = bars * beats * spb
+    tail = 1.9
+    buf = np.zeros(int((loop + tail) * SR))
+    drum = np.zeros_like(buf)
 
-    # --- santur-like ostinato + soft colour pad per bar ---
-    arp = [0, 1, 2, 3, 2, 3, 1, 2]
-    for b in range(bars):
-        bt = b * beats * spb
-        ch = chord_bars[b % 4]
-        tones = [s for s in ch if s >= 0] or ch
-        for j in range(8):
-            semi = tones[arp[j] % len(tones)]
-            acc = 0.072 if j % 4 == 0 else 0.05
-            add(buf, pluck(hz(semi), 0.46, amp=acc, wave='triangle', bright=0.78),
-                bt + j * 2 * sd)
-        ps = np.zeros(int(beats * spb * SR))
-        for semi in tones:
-            mix_into(ps, osc('triangle', hz(semi + 12), beats * spb), 0.3)
-        ps *= adsr(len(ps), 0.35, 0.3, 0.75, 0.5, 0.75)
-        add(buf, lp_static(ps, 1900) * 0.03, bt)
+    def sweep_sine(f0, f1, dur, k):
+        n = int(round(dur * SR)); te = np.arange(n) / SR
+        fsw = f1 + (f0 - f1) * np.exp(-te * k)
+        return np.sin(2 * np.pi * np.cumsum(fsw) / SR), te
 
-    # --- buzzy saz lead via the Kanno motif engine (phrygian) ---
-    mel = melody(chord_bars, scale, bars, beats, sd, 0, 2, 35 + rush,
-                 density=0.52 if not rush else 0.62, octave=1)
-    for (st, dn, semi) in mel:
-        dur = dn * sd * 0.96
-        n = int(round(dur * SR)); ttl = np.arange(n) / SR
-        sig = osc('saw', hz(semi), dur) * 0.7 + osc('saw', hz(semi), dur, detune=7) * 0.3
-        vib = 1 + 0.011 * np.sin(2 * np.pi * 5.6 * ttl) * np.minimum(1, ttl * 7)
-        sig = sig[:n] * vib
-        sig = np.tanh(sig * 1.7) / 1.25
-        sig = lp_static(sig, 3000, 1.1)
-        sig *= adsr(n, 0.012, 0.09, 0.6, max(0.05, dur * 0.22), 0.6)
-        add(lead, sig * 0.1, st * sd)
-    # consonant oud-ish counter voice (inner line below the lead)
-    for (st, dn, semi) in counter(mel, chord_bars, scale, beats, bars):
-        dur = dn * sd * 0.92
-        cs = osc('saw', hz(semi), dur) * 0.55 + osc('sine', hz(semi), dur) * 0.35
-        cs = lp_static(cs, 2000, 1.1)
-        cs *= adsr(len(cs), 0.02, 0.12, 0.5, 0.2, 0.5)
-        add(buf, cs * 0.045, st * sd)
+    # sitar/sarod-ish pluck with a lowpass sweep + slight beating
+    def sitar(semi, dur, amp):
+        n = int(round(dur * SR)); te = np.arange(n) / SR
+        f = hz(semi)
+        y = osc('saw', f, dur) + osc('triangle', f * 1.005, dur)
+        if semi >= 11:                            # octave-down body for highs
+            y += osc('saw', f / 2, dur) * 0.33
+        fc = 900 + 1700 * np.exp(-te * (3.0 / max(0.05, dur)))
+        y = onepole_lp_var(y, fc)
+        env = (1 - np.exp(-te * 240)) * np.exp(-te * (2.4 / max(0.06, dur)))
+        return y * env * amp
 
-    # --- darbuka groove (dum / tek / ka) + frame drum + shaker ---
-    def tek(amp):
-        d = 0.07; n = int(d * SR); te = np.arange(n) / SR
-        y = hp_static(noise(d), 4200) * np.exp(-te * 75)
-        y += np.sin(2 * np.pi * 920 * te) * np.exp(-te * 70) * 0.3
-        return y * amp
-    def ka(amp):
-        d = 0.045; n = int(d * SR); te = np.arange(n) / SR
-        return hp_static(noise(d), 6200) * np.exp(-te * 120) * amp
-    for b in range(bars):
-        bt = b * beats * spb
-        if rush:
-            dpat, tpat, kpat = [0, 4, 6, 8, 12, 14], [2, 10, 13], [3, 7, 11, 15]
-        else:
-            dpat, tpat, kpat = [0, 3, 8, 11], [4, 12, 14], [2, 6, 7, 10, 13]
-        for st in dpat:
-            add(drum, tabla(96, 0.30, amp=0.5), bt + st * sd)
-        for st in tpat:
-            add(drum, tek(0.34), bt + st * sd)
-        for st in kpat:
-            add(drum, ka(0.22), bt + st * sd)
-        for st in range(0, 16, 2):
-            add(drum, shaker(0.5 if st % 4 == 0 else 0.42), bt + st * sd)
-        add(drum, kick(0.42, 104, 52, amp=0.5, click=0.08), bt)   # frame drum
-        if rush:
-            add(drum, clap(0.3), bt + 4 * sd)
-            add(drum, clap(0.3), bt + 12 * sd)
-        if b == bars - 1:                                          # turnaround fill
-            for st in (12, 13, 14, 15):
-                add(drum, tek(0.26) if st % 2 else ka(0.22), bt + st * sd + sd * 0.5)
+    # tambura drone across the whole loop (Sa / Pa / Sa) with slow wobble
+    pn = int(loop * SR); pt = np.arange(pn) / SR
+    fade = np.clip(pt / 1.2, 0, 1)
+    drone = np.zeros(pn)
+    for semi, g, lf in ((-12, 0.085, 0.15), (-5, 0.05, 0.20), (0, 0.05, 0.25)):
+        s = osc('saw', hz(semi), loop)[:pn]
+        s = s * (1 + 0.015 * np.sin(2 * np.pi * lf * pt))
+        drone += s * g
+    drone = lp_static(drone, 700) * fade
+    add(buf, drone, 0)
 
-    lead = delay(lead, sd * (3 if rush else 4), 0.34, 0.30)
-    sig = buf + lead + drum
-    wet = reverb(hp_static(sig, 220), mix=1.0, decay=0.5)          # tight, hp'd
-    sig = sig + wet * (0.15 if not rush else 0.12)
+    # melody (one pass; whole-bar loop leaves a natural raga breath at the end)
+    pos = 0
+    for note, ln in phrase:
+        if pos >= steps:
+            break
+        semi = F[note]
+        dur = ln * sd * 0.96
+        add(buf, sitar(semi, dur, 0.34), pos * sd)
+        if semi >= 11:
+            add(buf, sitar(semi - 12, dur * 0.6, 0.10), pos * sd)
+        pos += ln
+
+    # tabla groove (Na/Tin high, bayan Ge low) + tal claps; spice -> density
+    def t_high(at, accent):
+        y, te = sweep_sine(420 if accent else 330, 160, 0.12, 28)
+        y = y * np.exp(-te * 26)
+        cl = noise(0.03); ce = np.arange(len(cl)) / len(cl)
+        cl = cl * np.power(np.clip(1 - ce, 0, 1), 2) * 0.5
+        out = y * (0.26 if accent else 0.17)
+        out[:len(cl)] += cl * 0.16
+        add(drum, out, at)
+    def t_low(at):
+        y, te = sweep_sine(150, 55, 0.26, 16)
+        add(drum, y * np.exp(-te * 11) * 0.34, at)
+    def tal(at):
+        d = 0.08; nz = noise(d); te = np.arange(len(nz)) / SR
+        nz = hp_static(lp_static(nz, 2600), 1400) * np.exp(-te * 40)
+        add(drum, nz * 0.22, at)
+    for s in range(steps):
+        at = s * sd
+        pos = s % 16
+        if pos % 4 == 0:
+            t_low(at)
+        if pos % 2 == 0:
+            t_high(at, pos % 8 == 0)
+        if spice >= 2 and pos in (6, 14):
+            t_high(at, False)
+        if spice >= 3:
+            if pos % 2 == 1:
+                t_high(at, False)
+            if pos == 10:
+                t_low(at)
+        if pos == 0:
+            tal(at)
+        if spice >= 3 and pos == 8:
+            tal(at)
+
+    sig = buf + drum
+    sig = delay(sig, sd * (3 if rush else 4), 0.28, 0.18)
+    wet = reverb(hp_static(sig, 220), mix=1.0, decay=0.5)
+    sig = sig + wet * (0.16 if not rush else 0.13)
     return sig, loop, tail
 
 
