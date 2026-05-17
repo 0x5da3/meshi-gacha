@@ -1,0 +1,6 @@
+# Python bytecode cache (from tools/genmusic.py syntax checks)
+__pycache__/
+*.pyc
+
+# generator output
+/tmp/bgm_assets.json
