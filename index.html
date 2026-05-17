@@ -2021,12 +2021,26 @@ function popOpenMulti(ctx,t,n){
 const crank=document.getElementById('crank');
 let spinning=false;
 
-function safeSound(ten){
+// モニタ演出の総尺と音を合わせる（演出が長いのに音が早く切れて
+// 「音が消えた」体感にならないように、レア度に応じて尺を伸ばす）
+function monitorMs(lvl){
+  if(typeof monReduced==='function' && monReduced()) return 520;
+  let d=520+520;                       // intro + journey0
+  if(lvl>=1) d+=520;                   // journey1
+  if(lvl>=2) d+=900;                   // reach
+  if(lvl>=3) d+=980;                   // super
+  if(lvl>=4) d+=760+1080;              // 激アツ + win
+  else if(lvl===3) d+=760;             // 大当たり!?
+  else d+=680;                         // miss
+  return d;
+}
+function safeSound(ten,lvl){
   try{
     const ctx=AC();
     if(ctx.state==='suspended') ctx.resume();
     buttonClick(ctx,ctx.currentTime);
-    if(ten) playGachaBig(525); else playGacha(525);
+    const dur=Math.max(525,monitorMs(lvl|0)-60);
+    if(ten) playGachaBig(dur); else playGacha(dur);
   }catch(e){/* 音声が使えない環境でもガチャは動かす */}
 }
 
@@ -2121,7 +2135,7 @@ function startGacha(){
       lvl=budgetRarity(preSingle.budget).lvl;
     }
   }catch(e){ console.error(e); lvl=0; }
-  safeSound(tenMode);
+  safeSound(tenMode,lvl);
   crank.classList.add('turning');
   crank.disabled=true;
   machine.classList.add('rolling');
