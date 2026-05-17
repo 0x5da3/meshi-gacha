@@ -1024,18 +1024,12 @@
   </footer>
 </div>
 
-<!-- iOS 画面収録対応：収録される“主たるメディア要素”はこの1個だけ。
-     初回操作で無音ループ再生して収録セッションを保持し、SFX 発生時は
-     この同じ要素で WAV を再生する（JS側 sfx()/playBuf()）。要素を分ける
-     と収録が無音ループ側に固定され SFX が録れない。display:none だと
-     一部 iOS でメディア無効化され得るため不可視でも描画は残す。
-     <audio> は iOS の画面収録(ReplayKit)に乗らないため <video> 要素を使う
-     （音声のみの WAV を再生。メディアAPI は <audio> と互換）。 -->
-<video id="silentKeep" loop playsinline webkit-playsinline preload="auto"
-  disablepictureinpicture x-webkit-airplay="deny"
+<!-- フォールバック用 / BGM解禁元の無音WAV。録画対象は下の <video id="sfxVid">
+     が担うため、ここは競合回避のため通常の <audio>（連続ループしない）。 -->
+<audio id="silentKeep" playsinline preload="auto"
   style="position:fixed;left:-9999px;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none"
   src="data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=">
-</video>
+</audio>
 <!-- iOS 画面収録対策(PR#16)：効果音は MediaRecorder で実エンコード
      （映像トラック付き=YouTube型）し、この <video> で再生して収録対象に。
      上の silentKeep は非対応端末フォールバック／BGM とは別系統。 -->
@@ -2237,18 +2231,21 @@ function unlockAudio(){
 // ページ非表示/離脱で音を止める（バックグラウンドや閉じた後も鳴り続けるのを防ぐ）
 function pauseAllAudio(){
   try{ if(typeof bgmAudio!=='undefined'&&bgmAudio) bgmAudio.pause(); }catch(e){}
+  try{ if(typeof VID!=='undefined'&&VID) VID.pause(); }catch(e){}
   try{ if(SFX_EL) SFX_EL.pause(); }catch(e){}
 }
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ pauseAllAudio(); return; }
-  try{ if(sfxStarted) startSilentLoop(); }catch(e){}        // 収録セッション復帰
+  try{ if(typeof videoMode!=='undefined'&&videoMode&&typeof vKeepLoop==='function') vKeepLoop(); }catch(e){} // 収録セッション復帰
   try{ if(typeof bgmWanted!=='undefined'&&bgmWanted&&appMode==='slot'&&typeof bgmStart==='function') bgmStart(); }catch(e){}
 });
 window.addEventListener('pagehide',pauseAllAudio);
 window.addEventListener('beforeunload',pauseAllAudio);
 
-/* ===== 店舗別 BGM（スロットモード専用・Web Audio 合成）=====
-   音は必ず masterOut(ctx) 経由＝ミュート/音量に追従し iOS 画面収録にも乗る。
+/* ===== 店舗別 BGM（スロットモード専用）=====
+   ループ WAV を OfflineAudioContext でプリレンダし独立した <audio> でループ。
+   録画対象は SFX の <video id="sfxVid"> なので BGM は iOS 収録には乗らない
+   （= 録画用 <video> と競合させない／端末では鳴る）。ミュート/音量は追従。
    semitone は C4(261.63Hz) からの半音オフセット。null=休符。負値=低オクターブ。 */
 const BGM_BASE=261.63;
 /* 各トラック：32ステップ(2小節/16分)。prog=8ステップごとのコード(半音集合)、
@@ -2290,11 +2287,11 @@ const BGM_TRACKS={
    プリレンダ→専用のループ <audio> から再生（iOS 画面収録に乗る／
    ミュート・音量にも追従）。店舗×通常/RUSH の最大6種をキャッシュ。 */
 const BGM_MIXG=0.42;
-// iOS 画面収録は <audio> を録らないため BGM も <video> 要素で再生
-const bgmAudio=document.createElement('video');
+// BGM は録画用 <video id="sfxVid"> と競合しないよう独立した <audio> で再生
+// （iOS 画面収録には乗らないが端末では鳴る。録画対象は SFX の <video>）。
+const bgmAudio=document.createElement('audio');
 bgmAudio.loop=true; bgmAudio.playsInline=true; bgmAudio.preload='auto';
-bgmAudio.setAttribute('playsinline',''); bgmAudio.setAttribute('webkit-playsinline','');
-bgmAudio.setAttribute('disablepictureinpicture','');
+bgmAudio.setAttribute('playsinline','');
 bgmAudio.style.cssText='position:fixed;left:-9999px;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none';
 document.body.appendChild(bgmAudio);
 const bgmCache={};
