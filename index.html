@@ -104,6 +104,12 @@
   }
   .modal-x:hover{background:rgba(255,255,255,.18)}
   .modal-body{padding:6px 14px 14px;overflow-y:auto}
+  /* 設定モーダル：共通モーダル骨格を流用しつつ筐体パネル風のダーク配色に */
+  .menu-card{
+    background:linear-gradient(180deg,#3a0a12,#240007);color:#ffe07a;
+    border-color:var(--oro);box-shadow:6px 6px 0 rgba(0,0,0,.4);
+  }
+  .menu-body{display:flex;flex-direction:column;gap:10px;padding:13px 14px 15px}
   .chg-block{
     border-bottom:1.5px dashed #e0caa0;padding:11px 0 12px;
   }
@@ -167,9 +173,9 @@
   .machine{
     background:var(--rosso);
     border:4px solid var(--rosso-dark);
-    border-radius:22px 22px 16px 16px;
-    padding:14px 14px 16px;
-    box-shadow:0 9px 0 var(--rosso-dark), 0 16px 26px rgba(0,0,0,.26);
+    border-radius:18px 18px 14px 14px;
+    padding:10px 11px 11px;
+    box-shadow:0 8px 0 var(--rosso-dark), 0 14px 22px rgba(0,0,0,.26);
     position:relative;
     overflow:hidden;
   }
@@ -182,7 +188,7 @@
     background:radial-gradient(circle at 38% 28%, #ffffff 0 8%, #d8ecff 30%, #aacbe8 70%, #7fa8c9 100%);
     border:4px solid #fff;
     border-radius:50% 50% 44% 44%;
-    height:104px;
+    height:82px;
     position:relative;
     overflow:hidden;
     box-shadow:inset 0 -12px 20px rgba(0,60,110,.28), inset 0 8px 14px rgba(255,255,255,.7);
@@ -190,7 +196,7 @@
 
   /* ---- pachinko-style LCD monitor ---- */
   .monitor{
-    position:relative;z-index:1;height:106px;margin-bottom:12px;
+    position:relative;z-index:1;height:88px;margin-bottom:9px;
     border:4px solid var(--rosso-dark);border-radius:14px;
     background:#0a0f1e;overflow:hidden;
     box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),
@@ -246,7 +252,7 @@
 
   /* ---- slot machine (3 reels + stop buttons + start) ---- */
   .slot{
-    position:relative;z-index:1;margin-bottom:12px;
+    position:relative;z-index:1;margin-bottom:9px;
     gap:6px;
     background:linear-gradient(180deg,#1a0a14,#3a0a18 60%,#1a0a14);
     border:4px solid var(--rosso-dark);border-radius:14px;padding:8px 10px 10px;
@@ -422,21 +428,25 @@
   .confirm .cf-no:active{transform:translateY(3px);box-shadow:0 1px 0 #d8b58a}
 
   /* ---- energy gauge ---- */
+  /* 10連バー：筐体に直接彫り込んだ凹みストリップとして描画 */
   .energy{
-    width:100%;min-width:0;display:flex;align-items:center;gap:7px;
-    background:rgba(0,0,0,.16);border:2px solid var(--rosso-dark);
-    border-radius:99px;padding:7px 14px;
-    transition:box-shadow .3s,border-color .3s;
+    position:relative;z-index:1;width:100%;min-width:0;
+    display:flex;align-items:center;gap:7px;margin-top:9px;
+    background:rgba(0,0,0,.30);border:0;
+    border-radius:7px;padding:5px 11px;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.55),
+      inset 0 -1px 0 rgba(255,255,255,.06), 0 1px 0 rgba(255,255,255,.1);
+    transition:box-shadow .3s;
   }
-  .elabel{font-size:13px;flex:0 0 auto;line-height:1}
+  .elabel{font-size:12px;flex:0 0 auto;line-height:1}
   .ecells{flex:1;display:flex;gap:2px;min-width:0}
-  .ecell{flex:1;height:8px;border-radius:2px;background:rgba(255,255,255,.22);transition:background .25s,box-shadow .25s}
+  .ecell{flex:1;height:7px;border-radius:2px;background:rgba(255,255,255,.16);transition:background .25s,box-shadow .25s}
   .ecell.on{background:linear-gradient(180deg,#ffe07a,#e6a417);box-shadow:0 0 4px rgba(255,210,80,.85)}
   .ecount{font-family:"Reggae One",cursive;font-size:12px;color:#ffe07a;flex:0 0 auto;line-height:1}
-  .energy.full{border-color:var(--oro);animation:epulse 1s ease-in-out infinite}
+  .energy.full{animation:epulse 1s ease-in-out infinite}
   .energy.full .ecount{color:#fff}
   .energy[hidden]{display:none}   /* RUSH中は隠してチャンス表示に切替 */
-  @keyframes epulse{0%,100%{box-shadow:0 0 0 1px rgba(255,210,80,.5),0 0 8px rgba(255,210,80,.45)}50%{box-shadow:0 0 0 2px rgba(255,210,80,.9),0 0 16px rgba(255,210,80,.85)}}
+  @keyframes epulse{0%,100%{box-shadow:inset 0 2px 5px rgba(0,0,0,.55),0 0 0 1px rgba(255,210,80,.55),0 0 8px rgba(255,210,80,.45)}50%{box-shadow:inset 0 2px 5px rgba(0,0,0,.55),0 0 0 2px rgba(255,210,80,.95),0 0 16px rgba(255,210,80,.85)}}
 
   /* ---- 10-pull ---- */
   .tenlabel{font-family:"Reggae One",cursive;font-size:20px;color:var(--rosso);text-align:center;margin-bottom:8px}
@@ -698,7 +708,8 @@
 
   /* ===== チャンスモード（確変ST RUSH）===== */
   .chancebar{
-    display:flex;align-items:center;gap:7px;margin-top:8px;
+    position:relative;z-index:1;
+    display:flex;align-items:center;gap:7px;margin-top:9px;
     background:linear-gradient(90deg,#b3001b,#ff7a00);
     border:2px solid #ffd23f;border-radius:99px;padding:5px 12px;color:#fff;
     font-family:"Reggae One",cursive;font-size:12px;letter-spacing:.02em;
@@ -713,8 +724,8 @@
     50%{box-shadow:0 0 0 2px rgba(255,210,80,.75),0 0 22px 7px rgba(255,140,0,.95)}
   }
   .machine.chance{
-    box-shadow:0 9px 0 var(--rosso-dark),0 0 0 3px rgba(255,210,80,.55),
-               0 16px 30px rgba(255,120,0,.5);
+    box-shadow:0 8px 0 var(--rosso-dark),0 0 0 3px rgba(255,210,80,.55),
+               0 14px 26px rgba(255,120,0,.5);
   }
   .chancefx{
     position:fixed;left:50%;top:40%;z-index:97;pointer-events:none;
@@ -797,48 +808,22 @@
   }
   .sndvol:disabled{opacity:.45;cursor:not-allowed}
 
-  /* ---- gachapon front panel ---- */
-  .panel{
-    position:relative;z-index:1;margin-top:11px;
-    display:flex;flex-direction:column;align-items:stretch;gap:9px;
-    background:linear-gradient(180deg,rgba(0,0,0,.26),rgba(0,0,0,.12));
-    border:2px solid var(--rosso-dark);border-radius:14px;
-    padding:11px 12px 13px;
-  }
-
   .setrow{display:flex;align-items:center;gap:8px;width:100%;
     background:rgba(0,0,0,.16);border:2px solid var(--rosso-dark);
     border-radius:99px;padding:5px 10px 5px 14px}
   .set-lab{font-size:12px;font-weight:900;color:#ffe07a;flex:0 0 auto;white-space:nowrap}
 
-  /* ---- settings accordion ---- */
-  .settings{
-    background:rgba(0,0,0,.18);border:2px solid var(--rosso-dark);border-radius:14px;
-    padding:0;overflow:hidden;
+  /* ---- 筐体の設定ボタン（モーダルを開く）---- */
+  .setbtn{
+    position:absolute;top:8px;right:8px;z-index:6;
+    width:28px;height:28px;border-radius:50%;
+    display:grid;place-items:center;cursor:pointer;
+    background:radial-gradient(circle at 34% 30%,#fff 0 8%,#ffe07a 28%,#e6a417 72%,#a86f08 100%);
+    border:2px solid var(--rosso-dark);color:#5a2a00;font-size:14px;line-height:1;
+    box-shadow:0 2px 0 var(--rosso-dark),0 3px 6px rgba(0,0,0,.32);
   }
-  .settings-h{
-    display:flex;align-items:center;justify-content:space-between;
-    list-style:none;cursor:pointer;user-select:none;
-    padding:7px 14px;font-family:"Reggae One",cursive;font-size:13px;
-    color:#ffe07a;letter-spacing:.04em;
-    background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(0,0,0,.18));
-  }
-  .settings-h::-webkit-details-marker{display:none}
-  .settings-h::marker{display:none;content:''}
-  .settings-caret{
-    color:#ffe07a;font-size:11px;transition:transform .25s ease;
-    display:inline-block;transform-origin:center;
-  }
-  .settings:not([open]) .settings-caret{transform:rotate(-90deg)}
-  .settings-h:hover{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(0,0,0,.18))}
-  .settings-body{
-    display:flex;flex-direction:column;gap:9px;padding:8px 9px 10px;
-    background:rgba(0,0,0,.12);
-    border-top:2px dashed rgba(255,255,255,.08);
-  }
-  .settings:not([open]) .settings-body{display:none}
-  /* alctog 内に直接置く想定なので余白調整 */
-  .settings-body .alctog{margin:0}
+  .setbtn:hover{filter:brightness(1.06)}
+  .setbtn:active{transform:translateY(2px);box-shadow:0 0 0 var(--rosso-dark),0 1px 3px rgba(0,0,0,.32)}
   .seg{flex:1;display:flex;gap:0;background:rgba(0,0,0,.18);border:2px solid var(--rosso-dark);
     border-radius:99px;padding:2px;overflow:hidden}
   .seg-b{
@@ -849,14 +834,15 @@
   .seg-b.on{background:var(--oro);color:#3a1500}
   .seg-b:active{transform:scale(.96)}
   .crank{
-    display:flex;align-items:center;gap:9px;background:none;border:0;
+    position:relative;z-index:1;
+    display:flex;align-items:center;gap:8px;background:none;border:0;
     cursor:pointer;color:#fff;font-family:"Reggae One",cursive;font-size:13px;
     padding:0;letter-spacing:.04em;flex:0 0 auto;
-    margin:10px auto 4px;justify-content:center;
+    margin:6px auto 2px;justify-content:center;
   }
   .crank .ctxt{text-shadow:1px 1px 0 rgba(0,0,0,.4)}
   .knob{
-    width:50px;height:50px;border-radius:50%;position:relative;
+    width:44px;height:44px;border-radius:50%;position:relative;
     display:grid;place-items:center;
     background:radial-gradient(circle at 34% 30%,#ffffff 0 10%,#dcdcdc 38%,#9a9a9a 72%,#6f6f6f 100%);
     border:3px solid #5e5e5e;
@@ -864,7 +850,7 @@
     transition:transform .1s;
   }
   .knob .grip{
-    width:7px;height:38px;background:#3a3a3a;border-radius:4px;
+    width:6px;height:30px;background:#3a3a3a;border-radius:4px;
     box-shadow:inset 0 0 0 2px rgba(255,255,255,.25);
   }
   .knob::after{
@@ -972,7 +958,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.14.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.15.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -986,6 +972,7 @@
   </header>
 
   <div class="machine mode-gacha" id="machine">
+    <button class="setbtn" id="setBtn" type="button" aria-label="設定を開く" aria-haspopup="dialog">⚙</button>
     <div class="monitor" id="monitor" aria-hidden="true">
       <span class="mon-tag" id="monTag"></span>
       <div class="mon-stage" id="monStage"></div>
@@ -1021,52 +1008,12 @@
       <span class="ctxt">まわす&nbsp;⟳</span>
       <span class="knob"><span class="grip"></span></span>
     </button>
-    <div class="panel">
-      <div class="energy" id="energyWrap">
-        <span class="elabel">⚡</span>
-        <span class="ecells" id="ecells"></span>
-        <span class="ecount" id="ecount">0/10</span>
-      </div>
-      <div class="chancebar" id="chanceWrap" hidden></div>
-      <details class="settings" id="settingsAcc">
-        <summary class="settings-h"><span>⚙ 設定</span><span class="settings-caret">▼</span></summary>
-        <div class="settings-body">
-          <div class="setrow">
-            <span class="set-lab">予算モード</span>
-            <div class="seg" id="bmSeg">
-              <button class="seg-b on" data-bm="normal">ノーマル&nbsp;¥500</button>
-              <button class="seg-b" data-bm="rich">リッチ&nbsp;¥1000</button>
-            </div>
-          </div>
-          <div class="setrow">
-            <span class="set-lab">未開封ロック</span>
-            <div class="seg" id="cfSeg">
-              <button class="seg-b" data-th="">OFF</button>
-              <button class="seg-b" data-th="2">R↑</button>
-              <button class="seg-b" data-th="3">RR↑</button>
-              <button class="seg-b on" data-th="4">SR</button>
-            </div>
-          </div>
-          <div class="setrow sndrow">
-            <button class="sndmute" id="sndMute" role="switch" aria-checked="false" aria-label="音をミュート">
-              <span class="snd-ic" id="sndIc">🔊</span>
-              <span class="snd-lab">サウンド</span>
-            </button>
-            <input class="sndvol" id="sndVol" type="range" min="0" max="100" step="1" value="80" aria-label="音量">
-            <button class="sndmute" id="bgmMute" role="switch" aria-checked="false" aria-label="BGMをミュート">
-              <span class="snd-ic" id="bgmIc">🎵</span>
-              <span class="snd-lab">BGM</span>
-            </button>
-          </div>
-          <button class="alctog" id="alctog" role="switch" aria-checked="true" aria-label="アルコールあり/なし切替">
-            <span class="al-lab"><span>🍷</span><span>アルコール</span></span>
-            <span class="al-right">
-              <span class="al-sw"><span class="al-knob"></span></span>
-            </span>
-          </button>
-        </div>
-      </details>
+    <div class="energy" id="energyWrap">
+      <span class="elabel">⚡</span>
+      <span class="ecells" id="ecells"></span>
+      <span class="ecount" id="ecount">0/10</span>
     </div>
+    <div class="chancebar" id="chanceWrap" hidden></div>
   </div>
 
   <div class="screen" id="screen">
@@ -1094,6 +1041,50 @@
     <br>
     ⚠ 本サイトは個人制作のファンプロジェクトであり、株式会社サイゼリヤ・株式会社王将フードサービス・株式会社壱番屋および各運営会社とは一切関係ありません。各社名・商標は識別目的でのみ使用しています。
   </footer>
+</div>
+
+<div class="modal-bg" id="setModal" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden>
+  <div class="modal-card menu-card">
+    <div class="modal-h">
+      <span id="setTitle">⚙ 設定</span>
+      <button class="modal-x" id="setClose" aria-label="閉じる">×</button>
+    </div>
+    <div class="modal-body menu-body">
+      <div class="setrow">
+        <span class="set-lab">予算モード</span>
+        <div class="seg" id="bmSeg">
+          <button class="seg-b on" data-bm="normal">ノーマル&nbsp;¥500</button>
+          <button class="seg-b" data-bm="rich">リッチ&nbsp;¥1000</button>
+        </div>
+      </div>
+      <div class="setrow">
+        <span class="set-lab">未開封ロック</span>
+        <div class="seg" id="cfSeg">
+          <button class="seg-b" data-th="">OFF</button>
+          <button class="seg-b" data-th="2">R↑</button>
+          <button class="seg-b" data-th="3">RR↑</button>
+          <button class="seg-b on" data-th="4">SR</button>
+        </div>
+      </div>
+      <div class="setrow sndrow">
+        <button class="sndmute" id="sndMute" role="switch" aria-checked="false" aria-label="音をミュート">
+          <span class="snd-ic" id="sndIc">🔊</span>
+          <span class="snd-lab">サウンド</span>
+        </button>
+        <input class="sndvol" id="sndVol" type="range" min="0" max="100" step="1" value="80" aria-label="音量">
+        <button class="sndmute" id="bgmMute" role="switch" aria-checked="false" aria-label="BGMをミュート">
+          <span class="snd-ic" id="bgmIc">🎵</span>
+          <span class="snd-lab">BGM</span>
+        </button>
+      </div>
+      <button class="alctog" id="alctog" role="switch" aria-checked="true" aria-label="アルコールあり/なし切替">
+        <span class="al-lab"><span>🍷</span><span>アルコール</span></span>
+        <span class="al-right">
+          <span class="al-sw"><span class="al-knob"></span></span>
+        </span>
+      </button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-bg" id="changelogModal" role="dialog" aria-modal="true" aria-labelledby="changelogTitle" hidden>
@@ -3588,6 +3579,11 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.15.0', items:[
+    '筐体をコンパクト化。10連バーを筐体パネルに直接彫り込んだ表示に',
+    '設定はアコーディオンを廃止し、筐体の⚙ボタンから開くメニュー窓に変更',
+    'ココイチBGMを刷新（フリジアンの妖しいリード＋サントゥール＋ダルブッカ）。推進力と色気を強化',
+  ] },
   { v:'0.14.0', items:[
     'スロットBGMを全面リニューアル。菅野よう子さんの作曲技法（モチーフ展開・対旋律・拡張和音／転調）を研究して刷新し、メロディに筋を持たせました',
     '店舗ごとに曲調を作り込み（サイゼ＝歩くベースのジャズ喫茶／王将＝中華ファンク／ココイチ＝妖しいエスニック）。RUSHは全音上がる“サビ転調”に',
@@ -3674,6 +3670,27 @@ if(chgClose) chgClose.addEventListener('click',closeChangelog);
 if(chgModal) chgModal.addEventListener('click',e=>{ if(e.target===chgModal) closeChangelog(); });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && chgModal && !chgModal.hidden) closeChangelog();
+});
+
+// 設定モーダル：筐体の⚙ボタンで開閉（変更履歴モーダルと同じ作法を流用）
+const setBtn=document.getElementById('setBtn');
+const setModal=document.getElementById('setModal');
+const setClose=document.getElementById('setClose');
+function openSettings(){
+  setModal.hidden=false;
+  setModal.classList.add('on');
+  setTimeout(()=>setClose&&setClose.focus(),0);
+}
+function closeSettings(){
+  setModal.classList.remove('on');
+  setModal.hidden=true;
+  if(setBtn) setBtn.focus();
+}
+if(setBtn) setBtn.addEventListener('click',openSettings);
+if(setClose) setClose.addEventListener('click',closeSettings);
+if(setModal) setModal.addEventListener('click',e=>{ if(e.target===setModal) closeSettings(); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && setModal && !setModal.hidden) closeSettings();
 });
 
 </script>
