@@ -1381,6 +1381,8 @@ try{
 }catch(e){}
 const BUDGET_MIN=1000, BUDGET_MAX=5000;
 function budgetStep(){ return budgetMode==='rich'?1000:500; }
+// ノーマルは ¥3,000 まで、リッチは ¥5,000 まで
+function budgetMax(){ return budgetMode==='rich'?BUDGET_MAX:3000; }
 let mustOpen=false;        // 未開封ロック中フラグ
 const ENERGY_MAX=10;
 
@@ -1401,7 +1403,7 @@ function rollBudget(){
   const step=budgetStep();
   const steps=[];
   let weights=[], sum=0;
-  for(let b=BUDGET_MIN;b<=BUDGET_MAX;b+=step){
+  for(let b=BUDGET_MIN;b<=budgetMax();b+=step){
     const w = chanceMode
       ? Math.exp((b-BUDGET_MIN)/sp.boost)    // チャンス中：高予算（高レア）に大きく偏る
       : Math.exp(-(b-BUDGET_MIN)/sp.decay);  // 通常：低予算に偏る（筐体ごとに辛さが違う）
@@ -2763,7 +2765,7 @@ function renderRates(){
   const sp=curSpec();
   const step=budgetStep();
   const tiers={}; let sum=0;
-  for(let b=BUDGET_MIN;b<=BUDGET_MAX;b+=step){
+  for(let b=BUDGET_MIN;b<=budgetMax();b+=step){
     const w=Math.exp(-(b-BUDGET_MIN)/sp.decay);   // rollBudget（通常時）と同じ式
     const r=budgetRarity(b);
     if(!tiers[r.lvl]) tiers[r.lvl]={lvl:r.lvl,t:r.t,c:r.c,w:0};
@@ -2791,7 +2793,7 @@ function renderSpec(){
   // 通常時の重みで、突入条件レア度以上を引く確率＝RUSH突入率
   const step=budgetStep();
   let sum=0, hit=0;
-  for(let b=BUDGET_MIN;b<=BUDGET_MAX;b+=step){
+  for(let b=BUDGET_MIN;b<=budgetMax();b+=step){
     const w=Math.exp(-(b-BUDGET_MIN)/sp.decay);
     sum+=w;
     if(budgetRarity(b).lvl>=sp.triggerLvl) hit+=w;
