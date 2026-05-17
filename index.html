@@ -907,7 +907,7 @@
 <div class="frame">
   <header>
     <h1>飯<span>ガチャスロ</span></h1>
-    <div class="ver">v0.9.1</div>
+    <div class="ver">v0.9.2</div>
     <p class="sub">予算内でランダムに注文が決まる！何が出るかはお楽しみ <span id="brandEmoji">🍝</span></p>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -2505,7 +2505,12 @@ function bgmRenderSynth(store,rush,key){
   });
 }
 function bgmApplyVol(){
-  try{ bgmAudio.volume = bgmMuted ? 0 : Math.max(0,Math.min(1, sfxVol()*bgmFade)); }catch(e){}
+  // iOS Safari は media要素の .volume を無視する。.muted は有効なので併用。
+  try{
+    const m = bgmMuted || soundMuted;
+    bgmAudio.muted = m;
+    bgmAudio.volume = m ? 0 : Math.max(0,Math.min(1, sfxVol()*bgmFade));
+  }catch(e){}
 }
 function bgmFadeTo(target,ms,cb){
   if(bgmFadeTimer){ clearInterval(bgmFadeTimer); bgmFadeTimer=null; }
