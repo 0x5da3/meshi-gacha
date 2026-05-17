@@ -1697,10 +1697,13 @@ function celebrate(rare,scale){
   scale=scale||1;
   const lv=rare.lvl;
   const C=n=>Math.round(n*scale);
-  cutin(rare);
-  if(lv>=4) heatFlash(true);
-  else if(lv>=3) heatFlash(false);
-  if(lv>=2){ screenShake(lv>=3); shockwave(lv>=3); rarityBanner(rare); }
+  const slotFx=(appMode==='slot');
+  if(slotFx){
+    cutin(rare);
+    if(lv>=4) heatFlash(true);
+    else if(lv>=3) heatFlash(false);
+  }
+  if(lv>=2){ screenShake(lv>=3); shockwave(lv>=3); if(slotFx) rarityBanner(rare); }
   if(lv>=4){
     flashEl('flash big',700);
     setTimeout(()=>flashEl('flash',520),170);
