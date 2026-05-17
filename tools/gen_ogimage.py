@@ -131,17 +131,43 @@ def draw_gold_text(img, xy, text, font, stroke_color=(60,30,0), stroke_w=6):
     return w, h
 
 def draw_capsule(img, cx, cy, r):
+    """ガチャポン風カプセル：金の半透明ドーム上 × 紺の下半球。
+    ポケモンボール感を避けるため、上半球に縦の透明グラデと中の星アイテムを覗かせる。"""
     d = ImageDraw.Draw(img, 'RGBA')
-    # top red
-    d.pieslice([cx-r, cy-r, cx+r, cy+r], 180, 360, fill=(225,60,80,255))
-    # bottom cream
-    d.pieslice([cx-r, cy-r, cx+r, cy+r],   0, 180, fill=(255,240,210,255))
-    # seam
-    d.rectangle([cx-r, cy-3, cx+r, cy+3], fill=(40,20,30,200))
-    # highlight
-    d.ellipse([cx-r*0.55, cy-r*0.85, cx-r*0.15, cy-r*0.35], fill=(255,255,255,180))
-    # gold ring
-    d.ellipse([cx-r-6, cy-r-6, cx+r+6, cy+r+6], outline=GOLD, width=5)
+    # 下半球（紺の不透明）
+    d.pieslice([cx-r, cy-r, cx+r, cy+r],   0, 180, fill=(20, 36, 90, 255))
+    # 下半球の縁影
+    d.pieslice([cx-r, cy-r+3, cx+r, cy+r+3], 0, 180, fill=(8, 16, 50, 180))
+    d.pieslice([cx-r, cy-r,   cx+r, cy+r],   0, 180, fill=(20, 36, 90, 255))
+    # 下半球の縦リブ（プラ容器っぽい筋）
+    for k in (-0.55, -0.18, 0.18, 0.55):
+        x = cx + int(r*k)
+        d.line([(x, cy+2), (x, cy + int(r*0.92))], fill=(60, 90, 170, 110), width=2)
+    # 中身（金の星）—— 半透明ドーム越しに見せる
+    star_pts = []
+    import math as _m
+    for i in range(10):
+        ang = -_m.pi/2 + i*_m.pi/5
+        rr = r*0.34 if i%2==0 else r*0.16
+        star_pts.append((cx + rr*_m.cos(ang), cy - r*0.18 + rr*_m.sin(ang)))
+    d.polygon(star_pts, fill=(255, 210, 90, 235), outline=(140, 80, 0, 255))
+    # 上半球（金の半透明ドーム）
+    dome = Image.new('RGBA', (r*2+8, r+8), (0,0,0,0))
+    dd = ImageDraw.Draw(dome)
+    dd.pieslice([0, 0, r*2, r*2], 180, 360, fill=(255, 200, 70, 170))
+    img.alpha_composite(dome, (cx-r, cy-r))
+    # 上半球の上面ハイライト
+    d.pieslice([cx-r+8, cy-r+6, cx+r-8, cy-r+r-10], 200, 340, fill=(255, 255, 255, 95))
+    d.ellipse([cx-r*0.55, cy-r*0.85, cx-r*0.10, cy-r*0.45], fill=(255, 255, 255, 200))
+    # 合わせ目リング（金）
+    d.rectangle([cx-r-2, cy-2, cx+r+2, cy+3], fill=(255, 206, 84, 255))
+    d.rectangle([cx-r-2, cy+3, cx+r+2, cy+5], fill=(150, 95, 10, 220))
+    # 外周のリム（金縁）
+    d.ellipse([cx-r-4, cy-r-4, cx+r+4, cy+r+4], outline=GOLD, width=4)
+    d.ellipse([cx-r-4, cy-r-4, cx+r+4, cy+r+4], outline=(80, 45, 5, 200), width=1)
+    # キラッ
+    d.line([(cx+r*0.45, cy-r*0.95),(cx+r*0.62, cy-r*0.78)], fill=(255,255,255,230), width=3)
+    d.line([(cx+r*0.55, cy-r*0.92),(cx+r*0.55, cy-r*0.78)], fill=(255,255,255,200), width=2)
 
 def draw_reels(img, cx, cy):
     d = ImageDraw.Draw(img, 'RGBA')
