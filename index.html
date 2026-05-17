@@ -912,7 +912,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <div class="ver">v0.10.3</div>
+      <div class="ver">v0.10.4</div>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -1548,6 +1548,7 @@ function chanceAfter(lvl){
   if(!chanceMode){
     if(lvl>=sp.triggerLvl){
       chanceMode=true; chanceStreak=1; chanceLeft=sp.stSpins;
+      energy=0; renderEnergy();              // RUSH突入で10連エネルギーをリセット
       renderChance(); chanceFx('enter',1);
     }
     return;
@@ -3114,7 +3115,7 @@ function startGacha(){
   if(mustOpen){ flashLock(); return; }
   spinning=true;
   bgmStart();                       // スロットモードならプレイ開始でBGM始動（多重起動はしない）
-  const tenMode = energy>=ENERGY_MAX;
+  const tenMode = !chanceMode && energy>=ENERGY_MAX;   // RUSH中は10連を無効化
   // モニタ演出を結果のレア度で煽るため、先に抽選しておく
   let lvl;
   try{
@@ -3144,7 +3145,7 @@ function startGacha(){
         dispenseTen();
       }else{
         dispenseCapsule();
-        energy=Math.min(ENERGY_MAX,energy+1);
+        if(!chanceMode) energy=Math.min(ENERGY_MAX,energy+1);  // RUSH中は10連を貯めない
         renderEnergy();
       }
     }catch(e){ console.error(e); }
