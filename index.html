@@ -633,6 +633,13 @@
   .raterow .rbar i{display:block;height:100%;border-radius:99px}
   .raterow .rpct{flex:0 0 42px;text-align:right;font-family:"Reggae One",cursive;font-size:12px}
   .ratenote{font-size:8px;color:#a98c63;line-height:1.5;margin-top:4px;text-align:center}
+  .specbox{background:var(--carta);border:2px solid #e6d2ad;border-radius:9px;padding:7px 10px;margin-top:8px}
+  .spec-h{font-family:"Reggae One",cursive;font-size:12px;color:var(--rosso);margin-bottom:5px;display:flex;align-items:center;gap:5px}
+  .spec-h b{background:var(--rosso);color:#fff;font-size:10px;padding:1px 8px;border-radius:99px}
+  .spec-g{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+  .spec-g>div{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:#7a6242;border-bottom:1px dashed #ecd9b8;padding:3px 0}
+  .spec-g>div b{font-family:"Reggae One",cursive;color:var(--ink);font-size:12px}
+  .spec-g>div b.hot{color:var(--rosso)}
 
   @keyframes pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
   @keyframes slidein{0%{transform:translateX(-22px);opacity:0}100%{transform:none;opacity:1}}
@@ -714,7 +721,8 @@
   <div class="rates">
     <h2>📊 排出率</h2>
     <div class="ratebox" id="rateRows"></div>
-    <p class="ratenote">予算 ¥1,000〜¥5,000 を100円刻みで抽選。高額ほど指数的に出にくく設定。</p>
+    <div class="specbox" id="specBox"></div>
+    <p class="ratenote">予算 ¥1,000〜¥5,000 を100円刻みで抽選。高額ほど指数的に出にくく設定。<br>筐体（お店）ごとに大当り確率・突入条件・確変継続率が異なります。</p>
   </div>
 
   <footer>
@@ -733,6 +741,7 @@ const STORES = {
     emoji: '🍝',
     tag: 'SAIZERIYA GACHA',
     theme: { rosso:'#0e8a43', rossoDark:'#084e27', verde:'#d11f3a', oro:'#e6a417' },
+    spec: { type:'ノーマル機', decay:850, boost:1200, triggerLvl:3, stSpins:8, pHit:0.083 },
     menu: [
       // [name, price, category, icon, isMain, isDessert, isDrink/alcohol]
       ["辛味チキン",300,"前菜","🍗",false,false,false],
@@ -833,6 +842,7 @@ const STORES = {
     emoji: '🥟',
     tag: 'OHSHO GACHA',
     theme: { rosso:'#c8102e', rossoDark:'#8e0a20', verde:'#0a7a3d', oro:'#e6a417' },
+    spec: { type:'甘デジ', decay:1100, boost:1100, triggerLvl:2, stSpins:6, pHit:0.077 },
     menu: [
       // 餃子
       ["焼餃子",290,"餃子","🥟",false,false,false],
@@ -932,6 +942,7 @@ const STORES = {
     emoji: '🍛',
     tag: 'COCO ICHIBANYA GACHA',
     theme: { rosso:'#e9a100', rossoDark:'#a35f00', verde:'#c8102e', oro:'#b5630a' },
+    spec: { type:'MAX機', decay:650, boost:1450, triggerLvl:3, stSpins:10, pHit:0.10 },
     menu: [
       // カレー（メイン）
       ["ポークカレー",604,"カレー","🍛",true,false,false],
@@ -1046,19 +1057,22 @@ const ENERGY_MAX=10;
 let chanceMode=false;        // チャンスモード突入中か
 let chanceLeft=0;            // ST残り（この回数“ハズレ継続”したら転落）
 let chanceStreak=0;          // 連チャン数
-const CHANCE_TRIGGER_LVL=3;  // RR以上を引いたら突入
-const ST_SPINS=6;            // ST回数（残り0で転落）
-const P_HIT=0.08;            // 1スピンの継続抽選確率（ST6回で実質継続率≈40%）。SRは継続確定
 const MAX_STREAK=50;         // 安全上限
+const DEFAULT_SPEC={ type:'ノーマル機', decay:850, boost:1200, triggerLvl:3, stSpins:8, pHit:0.083 };
+// 現在の筐体スペック（店舗ごとに大当り確率・突入条件・確変継続率が異なる）
+function curSpec(){ return (STORES[currentStore] && STORES[currentStore].spec) || DEFAULT_SPEC; }
+// 実質継続率（ST中に1回でも継続抽選を引ける確率）
+function continueRate(sp){ return 1-Math.pow(1-sp.pHit,sp.stSpins); }
 
 // 予算ガチャ：¥1,000〜¥5,000を100円刻みで、高額ほど指数的に出にくくする
 function rollBudget(){
+  const sp=curSpec();
   const steps=[];
   let weights=[], sum=0;
   for(let b=1000;b<=5000;b+=100){
     const w = chanceMode
-      ? Math.exp((b-1000)/1200)        // チャンス中：高予算（高レア）に大きく偏る
-      : Math.exp(-(b-1000)/850);       // 通常：低予算に偏る
+      ? Math.exp((b-1000)/sp.boost)    // チャンス中：高予算（高レア）に大きく偏る
+      : Math.exp(-(b-1000)/sp.decay);  // 通常：低予算に偏る（筐体ごとに辛さが違う）
     steps.push(b); weights.push(w); sum+=w;
   }
   let r=Math.random()*sum;
@@ -1161,18 +1175,19 @@ function renderChance(){
 
 // 1スピン分の結果レア度を受け取り、突入/継続/転落を判定
 function chanceAfter(lvl){
+  const sp=curSpec();
   if(!chanceMode){
-    if(lvl>=CHANCE_TRIGGER_LVL){
-      chanceMode=true; chanceStreak=1; chanceLeft=ST_SPINS;
+    if(lvl>=sp.triggerLvl){
+      chanceMode=true; chanceStreak=1; chanceLeft=sp.stSpins;
       renderChance(); chanceFx('enter',1);
     }
     return;
   }
   // チャンス中：この回が継続抽選に当たれば連チャン（SRは継続確定）。
   // 外れたらST残りを1消費し、0で転落。
-  const cont=(chanceStreak<MAX_STREAK) && (lvl>=4 || Math.random()<P_HIT);
+  const cont=(chanceStreak<MAX_STREAK) && (lvl>=4 || Math.random()<sp.pHit);
   if(cont){
-    chanceStreak++; chanceLeft=ST_SPINS;
+    chanceStreak++; chanceLeft=sp.stSpins;
     renderChance(); chanceFx('cont',chanceStreak);
   }else{
     chanceLeft--;
@@ -1964,7 +1979,10 @@ alctog.addEventListener('click',()=>{
 const storesw=document.getElementById('storesw');
 function applyStore(key){
   if(!STORES[key]) return;
+  const switching = key!==currentStore;
   currentStore=key;
+  // 台移動：進行中のチャンスモード（RUSH）は終了
+  if(switching && chanceMode){ chanceMode=false; chanceLeft=0; chanceStreak=0; }
   const s=STORES[key];
   const th=s.theme;
   if(th){
@@ -1984,6 +2002,7 @@ function applyStore(key){
     b.classList.toggle('on',on);
     b.setAttribute('aria-selected',on?'true':'false');
   });
+  renderRates(); renderSpec(); renderChance();
 }
 storesw.addEventListener('click',e=>{
   const b=e.target.closest('.ssbtn');
@@ -2003,9 +2022,10 @@ cfSeg.addEventListener('click',e=>{
 
 // 排出率を rollBudget と同一の重み付けから算出して表示
 function renderRates(){
+  const sp=curSpec();
   const tiers={}; let sum=0;
   for(let b=1000;b<=5000;b+=100){
-    const w=Math.exp(-(b-1000)/850);   // rollBudget と同じ式
+    const w=Math.exp(-(b-1000)/sp.decay);   // rollBudget（通常時）と同じ式
     const r=budgetRarity(b);
     if(!tiers[r.lvl]) tiers[r.lvl]={lvl:r.lvl,t:r.t,c:r.c,w:0};
     tiers[r.lvl].w+=w; sum+=w;
@@ -2022,10 +2042,37 @@ function renderRates(){
     </div>`;
   }).join('');
 }
-applyStore(currentStore);
-renderRates();
+
+// 筐体スペック（突入率・確変継続率）を明記
+function renderSpec(){
+  const box=document.getElementById('specBox');
+  if(!box) return;
+  const s=STORES[currentStore], sp=curSpec();
+  const TRIG={2:'R レア',3:'RR ダブルレア',4:'SR スーパーレア'};
+  // 通常時の重みで、突入条件レア度以上を引く確率＝RUSH突入率
+  let sum=0, hit=0;
+  for(let b=1000;b<=5000;b+=100){
+    const w=Math.exp(-(b-1000)/sp.decay);
+    sum+=w;
+    if(budgetRarity(b).lvl>=sp.triggerLvl) hit+=w;
+  }
+  const enterPct=hit/sum*100;
+  const cont=continueRate(sp)*100;
+  const avg=1/(1-continueRate(sp));
+  const fmt=p=>p<1?p.toFixed(2):p.toFixed(1);
+  box.innerHTML=
+    `<div class="spec-h">🎰 ${s.short} 筐体スペック <b>${sp.type}</b></div>
+     <div class="spec-g">
+       <div><span>突入条件</span><b>${TRIG[sp.triggerLvl]||'RR'}以上</b></div>
+       <div><span>RUSH突入率</span><b>${fmt(enterPct)}%</b></div>
+       <div><span>確変・継続率</span><b class="hot">${Math.round(cont)}%</b></div>
+       <div><span>ST回数</span><b>${sp.stSpins}回</b></div>
+       <div><span>平均連チャン</span><b>約${avg.toFixed(1)}連</b></div>
+       <div><span>SR継続</span><b>確定</b></div>
+     </div>`;
+}
+applyStore(currentStore);   // 内部で renderRates / renderSpec / renderChance を実行
 renderEnergy();
-renderChance();
 
 </script>
 </body>
