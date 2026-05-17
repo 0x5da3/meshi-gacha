@@ -268,47 +268,122 @@ def mix_into(dst, src, g=1.0):
 # prog = list of chord voicings (one per bar). bass_root per bar.
 # ============================================================
 
-def melody(scale, bars, beats, sd, lo, hi, seed, density=0.62, octave=0):
-    r = np.random.default_rng(seed)
-    notes = []
+def _pc(x):
+    return x % 12
+
+def _scalepool(scale, lo, hi, octave):
     pool = []
     o = lo
     while o <= hi:
         for s in scale:
-            v = s + o * 12 + octave * 12
-            pool.append(v)
+            pool.append(s + o * 12 + octave * 12)
         o += 1
-    pool = sorted(pool)
-    idx = len(pool) // 2
-    steps = bars * beats * 4  # 16th grid
-    i = 0
-    while i < steps:
-        beat_pos = i % 4
-        on = r.random() < (density if beat_pos in (0, 2) else density * 0.5)
-        if on:
-            mv = r.choice([-2, -1, -1, 0, 1, 1, 2, 3])
-            idx = int(np.clip(idx + mv, 0, len(pool) - 1))
-            dur_steps = r.choice([1, 2, 2, 2, 3, 4])
-            dur_steps = min(dur_steps, steps - i)
-            notes.append((i, dur_steps, pool[idx]))
-            i += dur_steps
-        else:
-            i += 1
-    return notes
+    return sorted(set(pool))
 
-# Kanno-ish harmonized countermelody: shadow the lead a diatonic 3rd/6th
-# below, snapped into the scale (sweet, vocal-like inner voice).
-def counter(notes, scale, drop=2):
-    sd = set(s % 12 for s in scale)
+def _nearest(pool, target_pc, ref):
+    cand = [p for p in pool if _pc(p) == target_pc] or pool
+    return min(cand, key=lambda p: (abs(p - ref), p))
+
+def _stepfrom(pool, ref, direction):
+    i = min(range(len(pool)), key=lambda k: abs(pool[k] - ref))
+    return pool[int(np.clip(i + (1 if direction >= 0 else -1), 0, len(pool) - 1))]
+
+# Kanno-informed melodic engine: a 1-bar motif (syncopated rhythm cell + a
+# rise-to-apex contour with a leap, then stepwise descent) developed by the
+# "Rule of Three" — bar0 statement, bar1 tail varied & sequenced to the next
+# chord, bar2 developed with a higher climactic-staccato apex, bar3 cadential
+# answer that resolves a 16th early then rests. Strong beats / the apex land
+# on chord tones of that bar; weak beats are scale passing/approach tones.
+# chord_bars[b] = semitone voicing for bar b. Returns [(start,dur,semi)].
+def melody(chord_bars, scale, bars, beats, sd, lo, hi, seed, density=0.62, octave=0):
+    r = np.random.default_rng(seed)
+    pool = _scalepool(scale, lo, hi, octave)
+    bs = beats * 4  # 16th steps per bar
+    CELLS = [
+        [(0, 2), (2, 2), (4, 3), (7, 1), (8, 2), (10, 2), (12, 4)],
+        [(0, 3), (3, 1), (4, 2), (6, 2), (8, 3), (11, 1), (12, 2), (14, 2)],
+        [(0, 2), (2, 1), (3, 3), (6, 2), (8, 2), (10, 2), (12, 2), (14, 2)],
+        [(0, 4), (4, 2), (6, 2), (8, 2), (10, 2), (12, 3), (15, 1)],
+    ]
+    base = CELLS[int(r.integers(len(CELLS)))]
+    apex_i = max(1, int(round(len(base) * 0.55)))
+    ref = pool[len(pool) // 2]
+    notes = []
+    for b in range(bars):
+        chord = chord_bars[b % len(chord_bars)]
+        nxt = chord_bars[(b + 1) % len(chord_bars)]
+        cts = sorted(set(_pc(c) for c in chord)) or [0]
+        ncts = sorted(set(_pc(c) for c in nxt)) or [0]
+        stage = b % 4
+        cell = [(o, d) for (o, d) in base]
+        if stage == 2:  # development: rhythmic displacement (syncopate)
+            cell = [((o + 1 if (k % 2 and o + 1 < bs) else o), d)
+                    for k, (o, d) in enumerate(cell)]
+        for k, (o, d) in enumerate(cell):
+            st = b * bs + o
+            strong = (o % 4 == 0)
+            if stage == 3 and k >= len(cell) - 2:
+                p = _nearest(pool, cts[0], ref)            # cadence target
+                d = max(1, d - 2)                          # end early -> rest
+                notes.append((st, d, p)); ref = p
+                break
+            if k == apex_i:                                # climactic staccato
+                lift = int(r.choice([4, 5, 7]))
+                if stage == 2:
+                    lift += 3
+                p = _nearest([x for x in pool if x > ref] or pool,
+                             cts[int(r.integers(len(cts)))], ref + lift)
+                notes.append((st, 1, p)); ref = p          # short + trailing gap
+                continue
+            if strong:
+                p = _nearest(pool, cts[int(r.integers(len(cts)))], ref)
+            elif r.random() < 0.16:                        # occasional 3rd+ leap
+                p = _nearest(pool, cts[int(r.integers(len(cts)))],
+                             ref + int(r.choice([-7, -5, 5, 7])))
+            else:                                          # step (resolve leaps)
+                p = _stepfrom(pool, ref, 1 if ref < notes[-1][2] else -1) \
+                    if notes else _stepfrom(pool, ref, int(r.choice([-1, 1])))
+            notes.append((st, d, p)); ref = p
+        if stage == 1 and notes:                           # sequence into next chord
+            s0, d0, _ = notes[-1]
+            notes[-1] = (s0, d0, _nearest(pool, ncts[0], ref))
+    steps = bars * bs
+    return [(s, min(dn, steps - s), p) for (s, dn, p) in notes if 0 <= s < steps and dn > 0]
+
+# Real countermelody: contrary/oblique motion vs the lead, restricted to the
+# bar's chord tones (consonant inner voice kept below the lead).
+def counter(notes, chord_bars, scale, beats, bars):
+    bs = beats * 4
     out = []
+    prev_lead = None
+    cref = None
     for (st, dn, semi) in notes:
-        deg = 0
-        c = semi
-        while deg < drop:
-            c -= 1
-            if c % 12 in sd:
-                deg += 1
+        b = (st // bs) % len(chord_bars)
+        cts = sorted(set(_pc(c) for c in chord_bars[b])) or [0]
+        if cref is None:
+            cref = semi - 12
+        if prev_lead is None:
+            tgt = semi - 12
+        elif semi > prev_lead:                 # lead rises -> counter falls
+            tgt = cref - 2
+        elif semi < prev_lead:                 # lead falls -> counter rises
+            tgt = cref + 2
+        else:                                  # lead holds -> oblique (hold)
+            tgt = cref
+        ceiling = semi - 3                      # stay below the lead
+        cands = []
+        base_oct = tgt // 12
+        for pc in cts:
+            for o in (-2, -1, 0, 1):
+                p = pc + 12 * (base_oct + o)
+                if p <= ceiling:
+                    cands.append(p)
+        if not cands:
+            cands = [semi - 12]
+        c = min(cands, key=lambda p: (abs(p - tgt), -p))
         out.append((st, dn, c))
+        prev_lead = semi
+        cref = c
     return out
 
 # Jazz walking bass: target each bar root, approach the next with a
@@ -385,7 +460,7 @@ def build_saizeriya(rush):
             bs *= adsr(len(bs), 0.006, 0.12, 0.55, 0.1, 0.55)
             add(buf, bs * 0.4, at)
     # lead melody + harmonized countermelody (Kanno-ish sweet inner voice)
-    mel = melody(scale, bars, beats, sd, 0, 2, 41 + rush,
+    mel = melody(voic, scale, bars, beats, sd, 0, 2, 41 + rush,
                  density=0.5 if not rush else 0.62,
                  octave=1 if rush else 0)
     for (st, dn, semi) in mel:
@@ -396,7 +471,7 @@ def build_saizeriya(rush):
         sig = sig * vib
         sig *= adsr(len(sig), 0.02, 0.08, 0.7, 0.12, 0.7)
         add(buf, sig * 0.13, at)
-    for (st, dn, semi) in counter(mel, scale, drop=2):
+    for (st, dn, semi) in counter(mel, voic, scale, beats, bars):
         at = st * sd + (swing * sd if st % 2 else 0)
         dur = dn * sd * 0.9
         cs = osc('sine', hz(semi), dur) * 0.6 + osc('triangle', hz(semi), dur) * 0.4
@@ -472,7 +547,7 @@ def build_ohsho(rush):
             add(buf, pluck(hz(semi), 0.5, amp=0.07, wave='triangle', bright=0.7),
                 bt + st * sd)
     # bright pentatonic lead riff + brass-ish countermelody (Kanno inner voice)
-    mel = melody(penta, bars, beats, sd, 1, 2, 77 + rush,
+    mel = melody(chords, penta, bars, beats, sd, 1, 2, 77 + rush,
                  density=0.66 if not rush else 0.78,
                  octave=1 if rush else 0)
     for (st, dn, semi) in mel:
@@ -483,7 +558,7 @@ def build_ohsho(rush):
         sig = lp_static(sig, 4200, 1.1)
         sig *= adsr(len(sig), 0.006, 0.06, 0.6, 0.08, 0.6)
         add(buf, sig * 0.1, at)
-    for (st, dn, semi) in counter(mel, penta, drop=2):
+    for (st, dn, semi) in counter(mel, chords, penta, beats, bars):
         at = st * sd
         dur = dn * sd * 0.85
         cs = osc('triangle', hz(semi), dur) * 0.6 + osc('square', hz(semi), dur, detune=4) * 0.25
@@ -553,27 +628,26 @@ def build_cocoichi(rush):
             mix_into(ps, osc('triangle', hz(semi + 12), beats * spb), 0.33)
         ps *= adsr(len(ps), 0.4, 0.3, 0.7, 0.5, 0.7)
         add(buf, lp_static(ps, 2200) * 0.035, bt)
-        # sitar-ish saw lead motif (phrygian), with bend on accents
-        motif = []
-        for k, st in enumerate([0, 3, 6, 8, 11, 14]):
-            deg = scale[(b * 2 + k) % len(scale)]
-            semi = deg + (12 if not rush else 24)
-            motif.append((st, 3, semi))
-            dur = sd * 3
-            sig = osc('saw', hz(semi), dur)
-            ttl = np.arange(len(sig)) / SR
-            bend = 1 + 0.012 * np.sin(2 * np.pi * 5.0 * ttl) * np.minimum(1, ttl * 6)
-            sig = sig * bend
-            sig = lp_static(sig, 2600, 1.4)
-            sig *= adsr(len(sig), 0.01, 0.1, 0.5, 0.18, 0.55)
-            add(buf, sig * 0.085, bt + st * sd)
-        # phrygian counter voice a diatonic 3rd below (hypnotic inner line)
-        for (st, dn, semi) in counter(motif, scale, drop=2):
-            dur = sd * dn
-            cs = osc('saw', hz(semi), dur) * 0.6 + osc('sine', hz(semi), dur) * 0.3
-            cs = lp_static(cs, 2000, 1.1)
-            cs *= adsr(len(cs), 0.02, 0.12, 0.45, 0.2, 0.5)
-            add(buf, cs * 0.045, bt + st * sd)
+    # sitar-ish saw lead via the motif engine (phrygian), with bend
+    mel = melody(chord_bars, scale, bars, beats, sd, 1, 2, 55 + rush,
+                 density=0.5 if not rush else 0.6,
+                 octave=1 if rush else 0)
+    for (st, dn, semi) in mel:
+        dur = dn * sd
+        sig = osc('saw', hz(semi), dur)
+        ttl = np.arange(len(sig)) / SR
+        bend = 1 + 0.012 * np.sin(2 * np.pi * 5.0 * ttl) * np.minimum(1, ttl * 6)
+        sig = sig * bend
+        sig = lp_static(sig, 2600, 1.4)
+        sig *= adsr(len(sig), 0.01, 0.1, 0.5, 0.18, 0.55)
+        add(buf, sig * 0.085, st * sd)
+    # phrygian contrary counter voice (hypnotic inner line)
+    for (st, dn, semi) in counter(mel, chord_bars, scale, beats, bars):
+        dur = dn * sd
+        cs = osc('saw', hz(semi), dur) * 0.6 + osc('sine', hz(semi), dur) * 0.3
+        cs = lp_static(cs, 2000, 1.1)
+        cs *= adsr(len(cs), 0.02, 0.12, 0.45, 0.2, 0.5)
+        add(buf, cs * 0.045, st * sd)
     # hypnotic hand percussion
     for b in range(bars):
         bt = b * beats * spb
