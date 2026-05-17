@@ -1512,10 +1512,7 @@ function renderChance(){
 function chanceAfter(lvl){
   const sp=curSpec();
   if(!chanceMode){
-    if(lvl>=sp.triggerLvl){
-      chanceMode=true; chanceStreak=1; chanceLeft=sp.stSpins;
-      renderChance(); chanceFx('enter',1);
-    }
+    // チャンスモード突入は廃止（継続中の確変のみ継続抽選を回す）
     return;
   }
   // チャンス中：この回が継続抽選に当たれば連チャン（SRは継続確定）。
