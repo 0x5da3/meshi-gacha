@@ -3441,7 +3441,7 @@ storesw.addEventListener('click',e=>{
   if(!b||b.classList.contains('on')) return;
   // スロット/ガチャ実行中、またはカプセル未開封の間は店舗切替を禁止
   if(spinning){ showSwHint(storesw,'回し中は切替できません'); return; }
-  if(awaitingOpen){ flashLock(); return; }
+  if(awaitingOpen){ showSwHint(storesw,'カプセルを開けてね'); flashLock(); return; }
   applyStore(b.dataset.store);
 });
 
