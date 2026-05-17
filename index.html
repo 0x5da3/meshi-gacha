@@ -693,6 +693,7 @@ const STORES = {
     short: 'サイゼ',
     emoji: '🍝',
     tag: 'SAIZERIYA GACHA',
+    theme: { rosso:'#0e8a43', rossoDark:'#084e27', verde:'#d11f3a', oro:'#e6a417' },
     menu: [
       // [name, price, category, icon, isMain, isDessert, isDrink/alcohol]
       ["辛味チキン",300,"前菜","🍗",false,false,false],
@@ -792,6 +793,7 @@ const STORES = {
     short: '王将',
     emoji: '🥟',
     tag: 'OHSHO GACHA',
+    theme: { rosso:'#c8102e', rossoDark:'#8e0a20', verde:'#0a7a3d', oro:'#e6a417' },
     menu: [
       // 餃子
       ["焼餃子",290,"餃子","🥟",false,false,false],
@@ -889,6 +891,8 @@ const STORES = {
     name: 'CoCo壱番屋',
     short: 'ココイチ',
     emoji: '🍛',
+    tag: 'COCO ICHIBANYA GACHA',
+    theme: { rosso:'#e9a100', rossoDark:'#a35f00', verde:'#c8102e', oro:'#b5630a' },
     menu: [
       // カレー（メイン）
       ["ポークカレー",604,"カレー","🍛",true,false,false],
@@ -1835,6 +1839,14 @@ function applyStore(key){
   if(!STORES[key]) return;
   currentStore=key;
   const s=STORES[key];
+  const th=s.theme;
+  if(th){
+    const r=document.documentElement.style;
+    r.setProperty('--rosso',th.rosso);
+    r.setProperty('--rosso-dark',th.rossoDark);
+    r.setProperty('--verde',th.verde);
+    r.setProperty('--oro',th.oro);
+  }
   const setText=(id,txt)=>{ const el=document.getElementById(id); if(el) el.textContent=txt; };
   setText('brandName',s.short);
   setText('brandShort',s.short);
@@ -1883,6 +1895,7 @@ function renderRates(){
     </div>`;
   }).join('');
 }
+applyStore(currentStore);
 renderRates();
 renderEnergy();
 
