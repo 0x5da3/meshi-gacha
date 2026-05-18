@@ -140,6 +140,13 @@
   .chg-tag{font-size:10px;color:var(--rosso);font-weight:900}
   .chg-list{margin:0;padding-left:18px;font-size:12.5px;line-height:1.65;color:var(--ink)}
   .chg-list li{margin-bottom:3px}
+  /* ---- 遊び方ガイドモーダル ---- */
+  .help-sec{border-bottom:1.5px dashed #e0caa0;padding:10px 0 11px}
+  .help-sec:last-child{border-bottom:0;padding-bottom:2px}
+  .help-sec h3{margin:0 0 5px;font-family:"Reggae One",cursive;font-size:14px;color:var(--rosso);letter-spacing:.02em}
+  .help-sec p,.help-sec ul{margin:0;font-size:12.5px;line-height:1.7;color:var(--ink)}
+  .help-sec ul{padding-left:18px}
+  .help-sec li{margin-bottom:2px}
 
   /* ---- store switcher ---- */
   .storesw{
@@ -847,6 +854,17 @@
   }
   .setbtn:hover{filter:brightness(1.06)}
   .setbtn:active{transform:translateY(-50%) translateY(2px);box-shadow:0 0 0 var(--rosso-dark),0 1px 3px rgba(0,0,0,.32)}
+  /* ---- 遊び方ガイドボタン（設定ボタンと対になる左端配置）---- */
+  .helpbtn{
+    position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:6;
+    width:36px;height:36px;border-radius:50%;
+    display:grid;place-items:center;cursor:pointer;
+    background:radial-gradient(circle at 34% 30%,#fff 0 8%,#bde7c8 28%,#2faf6a 72%,#0e6b3c 100%);
+    border:2px solid var(--rosso-dark);color:#063;font-size:19px;line-height:1;font-weight:900;
+    box-shadow:0 2px 0 var(--rosso-dark),0 3px 6px rgba(0,0,0,.32);
+  }
+  .helpbtn:hover{filter:brightness(1.06)}
+  .helpbtn:active{transform:translateY(-50%) translateY(2px);box-shadow:0 0 0 var(--rosso-dark),0 1px 3px rgba(0,0,0,.32)}
   .seg{flex:1;display:flex;gap:0;background:rgba(0,0,0,.18);border:2px solid var(--rosso-dark);
     border-radius:99px;padding:2px;overflow:hidden}
   .seg-b{
@@ -981,7 +999,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.26.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.27.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -1031,6 +1049,7 @@
         <span class="ctxt">まわす&nbsp;⟳</span>
         <span class="knob"><span class="grip"></span></span>
       </button>
+      <button class="helpbtn" id="helpBtn" type="button" aria-label="遊び方ガイドを開く" aria-haspopup="dialog">?</button>
       <button class="setbtn" id="setBtn" type="button" aria-label="設定を開く" aria-haspopup="dialog">⚙</button>
     </div>
     <div class="energy" id="energyWrap">
@@ -1119,6 +1138,69 @@
       <button class="modal-x" id="changelogClose" aria-label="閉じる">×</button>
     </div>
     <div class="modal-body" id="changelogBody"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+  <div class="modal-card">
+    <div class="modal-h">
+      <span id="helpTitle">❓ 遊び方ガイド</span>
+      <button class="modal-x" id="helpClose" aria-label="閉じる">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="help-sec">
+        <h3>🎮 基本ルール</h3>
+        <p>ガチャ（レバー）モードでは、上のツマミをまわすと<b>予算（¥1,000〜¥5,000）</b>とお店のメニューが同時にランダム決定。選ばれた料理の合計が予算におさまるよう自動でチョイスします。予算が高額なほど指数的に出にくく＝超レア 💎。</p>
+      </div>
+      <div class="help-sec">
+        <h3>🎲 2つのモード</h3>
+        <p>ヘッダーで切替できます。<b>🎰 ガチャ</b>＝レバーを回すだけ。<b>🎲 スロット</b>＝▶SPIN のあと、3つの STOP ボタンを表示された<b>押し順どおり</b>に止めます（押し順ミスは RUSH 継続率ダウン）。</p>
+      </div>
+      <div class="help-sec">
+        <h3>🏪 お店を選ぶ</h3>
+        <p>ヘッダーのタブで <b>ココイチ／サイゼリヤ／餃子の王将</b> を切替。お店ごとにメニュー・筐体カラー・大当り確率・RUSH 条件が変わります。</p>
+      </div>
+      <div class="help-sec">
+        <h3>💎 レアリティ（予算で決定）</h3>
+        <ul>
+          <li>● C コモン … ¥1,000〜</li>
+          <li>◆ U アンコモン … ¥1,200〜</li>
+          <li>★ R レア … ¥2,000〜</li>
+          <li>★★ RR ダブルレア … ¥3,000〜</li>
+          <li>★★★ SR スーパーレア … ¥4,000〜</li>
+        </ul>
+        <p>各お店の確率は下部の「📊 排出率」で確認できます。</p>
+      </div>
+      <div class="help-sec">
+        <h3>⚡ 10連ガチャ</h3>
+        <p>回すたびに ⚡ が1つたまり、10回で <b>10連</b> が発動。10品まとめて開封して結果をシェアできます。</p>
+      </div>
+      <div class="help-sec">
+        <h3>🔥 RUSH（確変）</h3>
+        <p>大当りで突入。突入条件・突入率・継続率はお店ごと（「📊 排出率」参照）。RUSH 中は ⚡ 表示がチャンス表示に切替わり、<b>開けずに回し続けて OK</b>・終了で自動開封されます。スロットは押し順を当てると継続率をキープ。</p>
+      </div>
+      <div class="help-sec">
+        <h3>🍛 ココイチ セット割</h3>
+        <p>ココイチ限定。カレーと「サラダ」または「ドリンク（¥220）」が一緒に出ると<b>セット割</b>（サラダ −¥40／ドリンク −¥50／両方で −¥130）。対象品に「セット」と表示され、合計・おつりに自動反映します。</p>
+      </div>
+      <div class="help-sec">
+        <h3>⚙ 設定（⚙ ボタン）</h3>
+        <ul>
+          <li><b>予算モード</b>：予算の刻み（ノーマル ¥500／リッチ ¥1,000）を切替</li>
+          <li><b>未開封ロック</b>：指定レア度以上の当たりはカプセルをタップして自分で開封（OFF で自動開封）</li>
+          <li><b>サウンド／BGM／音量</b>、<b>アルコールあり・なし</b></li>
+        </ul>
+        <p>設定は次回起動時も保存されます。</p>
+      </div>
+      <div class="help-sec">
+        <h3>🧾 履歴とシェア</h3>
+        <p>引いた注文は「これまでの注文」に記録。結果画面の「📤 シェア／📋 コピー」で SNS に共有できます。</p>
+      </div>
+      <div class="help-sec">
+        <h3>📜 アップデート履歴</h3>
+        <p>右上の <b>vX.X.X</b> バッジをタップすると、これまでの変更履歴が見られます。</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3765,6 +3847,9 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.27.0', items:[
+    '「遊び方ガイド」を追加。設定⚙の隣の「?」ボタンから、基本ルール・モード・お店・レアリティ・10連・RUSH・ココイチセット割・設定の説明を確認できます',
+  ] },
   { v:'0.26.0', items:[
     'CoCo壱限定：カレーとサラダ/ドリンク(¥220)が一緒に出るとセット割（サラダ−40／ドリンク−50／両方−130）。対象品に「セット」表示、合計・おつりに反映',
   ] },
@@ -3921,6 +4006,27 @@ if(chgClose) chgClose.addEventListener('click',closeChangelog);
 if(chgModal) chgModal.addEventListener('click',e=>{ if(e.target===chgModal) closeChangelog(); });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && chgModal && !chgModal.hidden) closeChangelog();
+});
+
+// 遊び方ガイド：筐体の?ボタンで開閉（変更履歴モーダルと同じ作法を流用）
+const helpBtn=document.getElementById('helpBtn');
+const helpModal=document.getElementById('helpModal');
+const helpClose=document.getElementById('helpClose');
+function openHelp(){
+  helpModal.hidden=false;
+  helpModal.classList.add('on');
+  setTimeout(()=>helpClose&&helpClose.focus(),0);
+}
+function closeHelp(){
+  helpModal.classList.remove('on');
+  helpModal.hidden=true;
+  if(helpBtn) helpBtn.focus();
+}
+if(helpBtn) helpBtn.addEventListener('click',openHelp);
+if(helpClose) helpClose.addEventListener('click',closeHelp);
+if(helpModal) helpModal.addEventListener('click',e=>{ if(e.target===helpModal) closeHelp(); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && helpModal && !helpModal.hidden) closeHelp();
 });
 
 // デバッグ専用：モニタを3回タップでその店のメニュー一覧をウィンドウ表示
