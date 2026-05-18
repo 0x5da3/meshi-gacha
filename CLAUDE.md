@@ -27,7 +27,7 @@
 - 現行バージョンは `0.21.2`。表示は `index.html` ヘッダーの `.ver` バッジ
   （`<button class="ver" id="verBadge">v0.21.2</button>`）が唯一の表示箇所。
   バージョン更新時はここを書き換える。タイトル（`<head><title>` /
-  `document.title`）は「飯ガチャスロ」固定でバージョンは含めない。
+  `document.title`）は「飯ガチャ」固定でバージョンは含めない。
 - バージョンバッジをクリックするとアップデート履歴モーダル
   （`#changelogModal`）が開く。新しい変更を出したら `index.html` 末尾の
   `CHANGELOG` 配列の先頭に追記する（最新が先頭）。文言は一般ユーザー
