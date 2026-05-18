@@ -975,11 +975,11 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.23.1</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.24.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
-      <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
-      <button class="ssbtn on" data-store="saizeriya" role="tab" aria-selected="true">🍝 サイゼリヤ</button>
+      <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
+      <button class="ssbtn" data-store="saizeriya" role="tab" aria-selected="false">🍝 サイゼリヤ</button>
       <button class="ssbtn" data-store="ohsho" role="tab" aria-selected="false">🥟 餃子の王将</button>
     </div>
     <div class="modesw" id="modesw" role="tablist" aria-label="モードを切り替え">
@@ -1580,7 +1580,7 @@ const STORES = {
   }
 };
 
-let currentStore = 'saizeriya';
+let currentStore = 'cocoichi';
 function activeMenu(){ return STORES[currentStore].menu; }
 
 // 見出しはレア度（＝引いた予算の大きさ）で決まる。小予算で「完全勝利」とは言わない
@@ -1614,7 +1614,6 @@ try{
   const sv=localStorage.getItem('mg.snd.vol'); if(sv!=null){ const n=parseFloat(sv); if(isFinite(n)) soundVolume=Math.min(1,Math.max(0,n)); }
   const sm=localStorage.getItem('mg.snd.mute'); if(sm!=null) soundMuted=(sm==='1');
   const bm=localStorage.getItem('mg.bgm.mute'); if(bm!=null) bgmMuted=(bm==='1');
-  const am=localStorage.getItem('mg.mode'); if(am==='slot'||am==='gacha') appMode=am;
 }catch(e){}
 const BUDGET_MIN=1000, BUDGET_MAX=5000;
 function budgetStep(){ return budgetMode==='rich'?1000:500; }
@@ -3495,7 +3494,6 @@ function applyMode(m){
   if(m!=='gacha' && m!=='slot') m='gacha';
   appMode=m;
   if(m!=='slot') bgmStop(500);    // スロット以外（ガチャ）ではBGMを止める
-  try{ localStorage.setItem('mg.mode',m); }catch(e){}
   machine.classList.toggle('mode-gacha', m==='gacha');
   machine.classList.toggle('mode-slot',  m==='slot');
   // ガチャモードではチャンスモードを使わないので、切替時に状態を掃除
@@ -3727,6 +3725,10 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.24.0', items:[
+    'ページを開いた時は常に「ガチャ」モードで表示するように（前回モードの記憶を廃止）',
+    '初期選択のお店を「CoCo壱番屋」に変更',
+  ] },
   { v:'0.23.1', items:[
     'SNS共有時のリンクカード画像を追加（飯ガチャのジャックポット風カード）',
   ] },
