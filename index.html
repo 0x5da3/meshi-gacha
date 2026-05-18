@@ -416,6 +416,8 @@
   ul.items li .nm{flex:1;line-height:1.2}
   ul.items li .ct{font-size:10px;color:#a98c63;font-weight:700}
   ul.items li .lim{display:inline-block;font-size:9px;font-weight:900;color:#fff;background:var(--oro);padding:0 6px;border-radius:99px;margin-left:6px;vertical-align:middle}
+  ul.items li .setb{display:inline-block;font-size:9px;font-weight:900;color:#fff;background:var(--verde);padding:0 6px;border-radius:99px;margin-left:6px;vertical-align:middle}
+  .setdisc{text-align:right;font-size:11px;font-weight:900;color:var(--verde);margin-top:4px}
   ul.items li .pr{font-family:"Reggae One",cursive;color:var(--rosso);font-size:14px;white-space:nowrap}
   .totalbar{
     display:flex;justify-content:space-between;align-items:center;
@@ -979,7 +981,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.25.3</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.26.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -1688,6 +1690,28 @@ for(let i=0;i<14;i++){
 
 function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
 
+// CoCo壱 セット割：カレー1品=1セット、最大「サラダ1＋ドリンク1」を取り込む。
+// 3点(-130) → カレー+ドリンク(-50) → カレー+サラダ(-40) の順で割引最大化。
+// paired は割引対象になった item 参照の Set（バッジ表示用）。
+function cocoSet(items){
+  if(currentStore!=='cocoichi') return {discount:0,paired:new Set()};
+  const curry=items.filter(it=>it[2]==='カレー');
+  const salad=items.filter(it=>it[2]==='サラダ');
+  const drink=items.filter(it=>it[2]==='ドリンク'&&it[1]===220);
+  const C=curry.length,S=salad.length,D=drink.length;
+  const paired=new Set();
+  let ci=0,si=0,di=0,discount=0;
+  const t=Math.min(C,S,D);                      // 3点セット
+  for(let k=0;k<t;k++){ paired.add(curry[ci++]);paired.add(salad[si++]);paired.add(drink[di++]);discount+=130; }
+  let C1=C-t;
+  const dd=Math.min(C1,D-t);                    // カレー+ドリンク
+  for(let k=0;k<dd;k++){ paired.add(curry[ci++]);paired.add(drink[di++]);discount+=50; }
+  C1-=dd;
+  const ss=Math.min(C1,S-t);                    // カレー+サラダ
+  for(let k=0;k<ss;k++){ paired.add(curry[ci++]);paired.add(salad[si++]);discount+=40; }
+  return {discount,paired};
+}
+
 function computeResult(){
   const budget=rollBudget();
   const menu = activeMenu();
@@ -1716,7 +1740,10 @@ function computeResult(){
     chosen.push(m); total+=m[1]; remain-=m[1];
     // 早期停止なし：候補が尽きるか10品到達まで続行
   }
-  return {items:chosen,total,budget};
+  const result={items:chosen,total,budget};
+  const sd=cocoSet(chosen);
+  if(sd.discount>0){ result.total=total-sd.discount; result.setDiscount=sd.discount; result.setPaired=sd.paired; }
+  return result;
 }
 
 let pendingResult=null;
@@ -1879,7 +1906,7 @@ function openCapsule(){
   celebrate(rare,1);
 
   setTimeout(()=>{
-    render(r.items,r.total,r.budget-r.total,r.budget);
+    render(r.items,r.total,r.budget-r.total,r.budget,r);
     history.unshift({single:true,result:r});
     if(history.length>6) history.pop();
     renderHist();
@@ -2104,7 +2131,7 @@ function render10(list){
 function showDetail(res,back){
   const screen=document.getElementById('screen');
   const bb=back?`<button class="backbtn" id="backbtn">← 一覧にもどる</button>`:'';
-  screen.innerHTML=bb+resultInner(res.items,res.total,res.budget-res.total,res.budget);
+  screen.innerHTML=bb+resultInner(res.items,res.total,res.budget-res.total,res.budget,res);
   screen.classList.remove('show');void screen.offsetWidth;screen.classList.add('show');
   if(back){
     const b=document.getElementById('backbtn');
@@ -2232,7 +2259,8 @@ function sortItemsByCategory(items){
 }
 
 // 単発結果の中身HTML（render と showDetail で共用）
-function resultInner(items,total,left,budget){
+function resultInner(items,total,left,budget,meta){
+  const setP=meta&&meta.setPaired, setD=meta&&meta.setDiscount;
   const rare=budgetRarity(budget);
   const verd=VERDICT[rare.lvl];
   const pct=Math.min(100,Math.round(total/budget*100));
@@ -2246,7 +2274,7 @@ function resultInner(items,total,left,budget){
       ${sorted.map((it,i)=>`
         <li style="animation-delay:${i*70}ms">
           <span class="ico">${it[3]}</span>
-          <span class="nm">${it[0]}${it[7]==='limited'?'<span class="lim">期間限定</span>':''}<br><span class="ct">${it[2]}</span></span>
+          <span class="nm">${it[0]}${it[7]==='limited'?'<span class="lim">期間限定</span>':''}${setP&&setP.has(it)?'<span class="setb">セット</span>':''}<br><span class="ct">${it[2]}</span></span>
           <span class="pr">¥${it[1]}</span>
         </li>`).join('')}
     </ul>
@@ -2254,6 +2282,7 @@ function resultInner(items,total,left,budget){
       <span class="lab">${items.length}品の合計</span>
       <span class="tot">¥${total.toLocaleString()}<small> / ¥${budget.toLocaleString()}</small></span>
     </div>
+    ${setD?`<div class="setdisc">🍛 CoCo壱セット割 −¥${setD.toLocaleString()}</div>`:''}
     <div class="meter"><i style="width:${pct}%"></i></div>
     <div class="remain">おつり ¥${left.toLocaleString()}</div>
     <div class="sharebar">
@@ -2262,9 +2291,9 @@ function resultInner(items,total,left,budget){
     </div>`;
 }
 
-function render(items,total,left,budget){
+function render(items,total,left,budget,meta){
   const screen=document.getElementById('screen');
-  screen.innerHTML=resultInner(items,total,left,budget);
+  screen.innerHTML=resultInner(items,total,left,budget,meta);
   screen.classList.remove('show');void screen.offsetWidth;screen.classList.add('show');
   wireShare(()=>singleShareText(items,total,left,budget));
 }
@@ -3736,6 +3765,9 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.26.0', items:[
+    'CoCo壱限定：カレーとサラダ/ドリンク(¥220)が一緒に出るとセット割（サラダ−40／ドリンク−50／両方−130）。対象品に「セット」表示、合計・おつりに反映',
+  ] },
   { v:'0.25.3', items:[
     'リンクカード画像（og.png）が公開サイトに含まれずX等でカードが出ない不具合を修正',
   ] },
