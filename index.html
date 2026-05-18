@@ -979,7 +979,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.25.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.25.1</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -2270,7 +2270,12 @@ function render(items,total,left,budget){
 }
 
 // ===== SNS シェア =====
-function shareUrl(){ return location.origin+location.pathname; }
+function shareUrl(){
+  // SNS のカードを安定させるため、共有URLは canonical（正規URL）に固定。
+  // どの経路で開いても同一URLを共有でき、末尾スラッシュ等のブレを防ぐ。
+  const c=document.querySelector('link[rel="canonical"]');
+  return (c && c.href) || (location.origin+location.pathname);
+}
 
 function singleShareText(items,total,left,budget){
   const s=STORES[currentStore];
@@ -3731,6 +3736,9 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.25.1', items:[
+    'SNS共有時のリンクカードを安定化（共有URLを正規URLに固定し、末尾スラッシュ等のブレでカードが出ない問題を防止）',
+  ] },
   { v:'0.25.0', items:[
     'SPINボタンを小さく（半分・中央寄せ）。設定⚙ボタンをSPIN／レバーと同じ行の右端に配置（ガチャ・スロット両モードで同じ高さ）',
   ] },
