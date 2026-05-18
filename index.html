@@ -4,6 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>飯ガチャスロ</title>
+<meta name="description" content="予算もメニューもガチャで決まる、外食注文シミュレーター。">
+<link rel="canonical" href="https://0x5da3.github.io/meshi-gacha/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="飯ガチャ">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="飯ガチャ 🎰🍝">
+<meta property="og:description" content="予算もメニューもガチャで決まる、外食注文シミュレーター。">
+<meta property="og:url" content="https://0x5da3.github.io/meshi-gacha/">
+<meta property="og:image" content="https://0x5da3.github.io/meshi-gacha/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="飯ガチャ">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="飯ガチャ 🎰🍝">
+<meta name="twitter:description" content="予算もメニューもガチャで決まる、外食注文シミュレーター。">
+<meta name="twitter:image" content="https://0x5da3.github.io/meshi-gacha/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Reggae+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
@@ -959,7 +975,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.21.2</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.22.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -3711,6 +3727,9 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.22.0', items:[
+    'SNSでURLを共有するとリンクカード（タイトル・説明・画像）が表示されるように（OGP/Twitterカード対応）',
+  ] },
   { v:'0.21.2', items:[
     '共有・コピーの文言を現行ブランド「飯ガチャスロ」に統一（旧「○○ガチャ」「#飯ガチャ」を是正）',
   ] },
