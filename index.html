@@ -959,7 +959,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャスロ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.20.1</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.21.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn" data-store="cocoichi" role="tab" aria-selected="false">🍛 ココイチ</button>
@@ -1095,6 +1095,16 @@
       <button class="modal-x" id="changelogClose" aria-label="閉じる">×</button>
     </div>
     <div class="modal-body" id="changelogBody"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="menuDbgModal" role="dialog" aria-modal="true" aria-labelledby="menuDbgTitle" hidden>
+  <div class="modal-card menu-card">
+    <div class="modal-h">
+      <span id="menuDbgTitle">🛠️ メニュー一覧（デバッグ）</span>
+      <button class="modal-x" id="menuDbgClose" aria-label="閉じる">×</button>
+    </div>
+    <div class="modal-body menu-body" id="menuDbgBody"></div>
   </div>
 </div>
 
@@ -3701,6 +3711,9 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.21.0', items:[
+    '【デバッグ】モニタを3回タップでその店舗のメニュー一覧をウィンドウ表示（?debug もしくは localStorage mg.debug=1 のときのみ有効）',
+  ] },
   { v:'0.20.1', items:[
     'BGMの初期設定をオフに変更（初回はBGM消音。BGMミュートボタンでいつでもオン可能）',
   ] },
@@ -3818,6 +3831,46 @@ if(chgModal) chgModal.addEventListener('click',e=>{ if(e.target===chgModal) clos
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && chgModal && !chgModal.hidden) closeChangelog();
 });
+
+// デバッグ専用：モニタを3回タップでその店のメニュー一覧をウィンドウ表示
+const DEBUG = /[?&#]debug\b/.test(location.search + location.hash)
+           || (()=>{ try{ return localStorage.getItem('mg.debug')==='1'; }catch(e){ return false; } })();
+const mdbgModal=document.getElementById('menuDbgModal');
+const mdbgBody=document.getElementById('menuDbgBody');
+const mdbgClose=document.getElementById('menuDbgClose');
+function renderDbgMenu(){
+  const s=STORES[currentStore]||{}, list=s.menu||[];
+  const FL=(m)=>[m[4]&&'主',m[5]&&'甘',m[6]&&(m[6]===true?'飲':String(m[6]))].filter(Boolean).join('・');
+  mdbgBody.innerHTML=
+    `<div style="font:700 12px/1.5 inherit;color:#9a7b53;margin-bottom:8px">`
+    +`${escHtml(s.name||currentStore)}：${list.length} 品</div>`
+    +list.map(m=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;`
+      +`padding:5px 4px;border-bottom:1px solid rgba(0,0,0,.08)">`
+      +`<span style="font-size:16px">${escHtml(m[3]||'')}</span>`
+      +`<span style="flex:1">${escHtml(m[0])}</span>`
+      +`<span style="font-size:10px;color:#a98c63">${escHtml(m[2]||'')}`
+      +`${FL(m)?' / '+escHtml(FL(m)):''}</span>`
+      +`<b style="font-family:'Reggae One',cursive;color:var(--rosso)">¥${(+m[1]||0).toLocaleString()}</b>`
+      +`</div>`).join('');
+}
+function openDbgMenu(){ renderDbgMenu(); mdbgModal.hidden=false; mdbgModal.classList.add('on');
+  setTimeout(()=>mdbgClose&&mdbgClose.focus(),0); }
+function closeDbgMenu(){ mdbgModal.classList.remove('on'); mdbgModal.hidden=true; }
+if(mdbgClose) mdbgClose.addEventListener('click',closeDbgMenu);
+if(mdbgModal) mdbgModal.addEventListener('click',e=>{ if(e.target===mdbgModal) closeDbgMenu(); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && mdbgModal && !mdbgModal.hidden) closeDbgMenu();
+});
+if(DEBUG && monitorEl){
+  let taps=0, tt=null;
+  monitorEl.style.cursor='pointer';
+  monitorEl.addEventListener('click',()=>{
+    taps++;
+    clearTimeout(tt);
+    if(taps>=3){ taps=0; openDbgMenu(); return; }
+    tt=setTimeout(()=>{ taps=0; }, 800);
+  });
+}
 
 // 設定モーダル：筐体の⚙ボタンで開閉（変更履歴モーダルと同じ作法を流用）
 const setBtn=document.getElementById('setBtn');
