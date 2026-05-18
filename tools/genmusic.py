@@ -434,82 +434,99 @@ STORES = {}
 
 # ---------- SAIZERIYA: jazzy cafe / bossa ----------
 def build_saizeriya(rush):
-    # SAIZERIYA: bittersweet cinematic waltz in 3/4 (full reimagining).
-    bpm = 178 if rush else 150
-    beats = 3                                   # 3/4 waltz
-    bars = 4
+    # SAIZERIYA: "Valzer Oscuro" — dark d-minor/F 3/4 waltz (user-provided),
+    # arranged to fit the slot: sub+mid bass, detuned pad on 2&3, vibrato
+    # lead with octave shimmer, waltz kick/hats; brightness follows light[].
+    bpm = 208 if rush else 180
+    beats = 3
+    bars = 32
     spb = 60.0 / bpm
     sd = spb / 4.0
     loop = bars * beats * spb
-    tail = 2.3
+    tail = 2.4
     buf = np.zeros(int((loop + tail) * SR))
     drum = np.zeros_like(buf)
     global _TP
-    _TP = 2 if rush else 0                      # RUSH: whole-step lift
-    # Am9 – Fmaj7(9) – Dm7 – E7(b9)  (i – VI – iv – V7b9): bittersweet Kanno
-    voic = [
-        [-15, 0, 4, 7, 11],     # Am9   (A C E G B)
-        [-19, 0, 5, 9, 12],     # Fmaj7 (F C F A E)
-        [-22, 2, 5, 9, 12],     # Dm7   (D D F A C)
-        [-20, 4, 8, 11, 13],    # E7b9  (E G# D F)
-    ]
-    scale = [0, 2, 4, 5, 7, 8, 9, 11]           # A-minor + G# (harmonic color)
+    _TP = 2 if rush else 0                        # RUSH: whole-step lift
+
+    CHROM = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    FLAT = {'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'}
+
+    def semi(name):
+        o = int(name[-1]); p = name[:-1]
+        return CHROM.index(FLAT.get(p, p)) + 12 * (o - 4)
+
+    Dm = ['D3', 'F3', 'A3']; Bb = ['Bb2', 'D3', 'F3']; Gm = ['G2', 'Bb2', 'D3']
+    A7 = ['A2', 'C#3', 'E3']; Fc = ['F2', 'A2', 'C3']; Cc = ['C3', 'E3', 'G3']
+    ch = [Dm, Gm, A7, Dm, Bb, Gm, A7, Dm, Gm, A7, Dm, A7,
+          Fc, Cc, Bb, Fc, Gm, Cc, Fc, Cc, Bb, Fc, Cc, Fc,
+          Gm, A7, Dm, Gm, Dm, A7, Dm, A7]
+    light = ([0] * 12 + [1] * 8 + [2, 2, 2, 2] + [1, 1] + [0] * 6)
+    mel = [[['A4', 1], ['D5', 1], ['F5', 1]], [['G4', 1], ['Bb4', 1], ['D5', 1]],
+           [['A4', 1.5], ['E5', .5], ['C#5', 1]], [['D5', 2], ['A4', 1]],
+           [['Bb4', 1], ['F5', 1], ['D5', 1]], [['G4', 1], ['D5', 1], ['Bb4', 1]],
+           [['A4', 1], ['C#5', 1], ['E5', 1]], [['D5', 2], ['A4', 1]],
+           [['G4', 1], ['Bb4', 1], ['D5', 1]], [['E5', 1], ['A4', 1], ['C#5', 1]],
+           [['D5', 1], ['F4', 1], ['A4', 1]], [['C#5', 1.5], ['A4', .5], ['E4', 1]],
+           [['F5', 1], ['A5', 1], ['C5', 1]], [['E5', 1], ['G5', 1], ['C5', 1]],
+           [['D5', 1], ['F5', 1], ['Bb4', 1]], [['C5', 1], ['A5', 1], ['F5', 1]],
+           [['Bb4', 1], ['D5', 1], ['G5', 1]], [['C5', 1], ['E5', 1], ['G5', 1]],
+           [['A5', 1], ['F5', 1], ['C5', 1]], [['G5', 2], ['E5', 1]],
+           [['Bb4', 1], ['D5', 1], ['F5', 1]], [['A5', 1], ['F5', 1], ['C5', 1]],
+           [['G5', 1], ['E5', 1], ['C5', 1]], [['F5', 1], ['A5', 1], ['C6', 1]],
+           [['Bb4', 1], ['G5', 1], ['D5', 1]], [['A4', 1], ['E5', 1], ['C#5', 1]],
+           [['D5', 1], ['F4', 1], ['A4', 1]], [['G4', 1], ['Bb4', 1], ['D5', 1]],
+           [['A4', 1], ['D5', 1], ['F4', 1]], [['C#5', 1.5], ['A4', .5], ['E4', 1]],
+           [['D5', 1], ['A4', 1], ['F4', 1]], [['A4', 2], ['D4', 1]]]
 
     for b in range(bars):
-        bt = b * beats * spb
-        ch = voic[b % 4]
-        root = ch[0]
-        # lush string-ensemble pad holding the chord
-        for semi in ch[1:]:
-            add(buf, strings(hz(semi), beats * spb * 0.98, amp=0.5), bt + 0.01)
-        # waltz "oom-pah-pah": bass on beat1, Rhodes chord on beats 2 & 3
-        bs = osc('triangle', hz(root), spb * 0.9) * 0.8 + osc('sine', hz(root - 12), spb * 0.9) * 0.5
-        bs = lp_static(bs, 700)
-        bs *= adsr(len(bs), 0.006, 0.14, 0.4, 0.12, 0.45)
-        add(buf, bs * 0.42, bt)
-        for beat in (1, 2):
-            for k, semi in enumerate(ch[1:4]):
-                add(buf, epiano(hz(semi), spb * 0.8, amp=0.07 * (0.9 if k else 1.0)),
-                    bt + beat * spb)
-        # passing bass note leading into the next bar (beat 3)
-        nxt = voic[(b + 1) % 4][0]
-        pb = osc('triangle', hz(root + (1 if nxt > root else -1) + (0 if b % 2 else -0)), spb * 0.6)
-        pb = lp_static(pb, 700) * adsr(len(pb), 0.006, 0.1, 0.3, 0.08, 0.4)
-        add(buf, pb * 0.22, bt + 2 * spb)
-    # expressive lead — wide leaps, climactic-staccato, early resolution
-    mel = melody(voic, scale, bars, beats, sd, 0, 2, 41 + rush,
-                 density=0.5 if not rush else 0.6,
-                 octave=1 if rush else 0)
-    for (st, dn, semi) in mel:
-        at = st * sd
-        dur = dn * sd * 0.96
-        sig = osc('triangle', hz(semi), dur) * 0.55 + osc('sine', hz(semi), dur) * 0.45
-        tt = np.arange(len(sig)) / SR
-        vib = 1 + 0.006 * np.sin(2 * np.pi * 5.2 * tt) * np.minimum(1, tt * 4)
-        sig = sig * vib
-        sig *= adsr(len(sig), 0.03, 0.1, 0.72, 0.22, 0.7)
-        add(buf, sig * 0.135, at)
-    # cello-ish contrary counter line
-    for (st, dn, semi) in counter(mel, voic, scale, beats, bars):
-        at = st * sd
-        dur = dn * sd * 0.95
-        cs = osc('saw', hz(semi - 12), dur) * 0.45 + osc('sine', hz(semi - 12), dur) * 0.55
-        cs = lp_static(cs, 1300, 0.8)
-        cs *= adsr(len(cs), 0.04, 0.12, 0.6, 0.2, 0.6)
-        add(buf, cs * 0.06, at)
-    # intimate waltz brushes: soft kick on 1, brush taps on 2 & 3
-    for b in range(bars):
-        bt = b * beats * spb
-        add(drum, kick(0.34, 105, 44, amp=0.4, click=0.08), bt)
-        for beat in (1, 2):
-            add(drum, snare(0.16, amp=0.16, soft=True), bt + beat * spb)
-            add(drum, shaker(0.34), bt + beat * spb)
-        if rush:
-            add(drum, shaker(0.3), bt + 0.5 * spb)
-            add(drum, shaker(0.3), bt + 1.5 * spb)
+        T = b * beats * spb
+        c = [semi(x) for x in ch[b]]
+        lv = light[b]
+        # waltz kit
+        add(drum, kick(0.30, 170, 46, amp=0.5, click=0.18), T)
+        for off, vol, op in ((0.5, 0.05, 0), (1, 0.1, 0), (1.5, 0.05, 0),
+                             (2, 0.085, 1 if lv >= 1 else 0), (2.5, 0.05, 0)):
+            add(drum, hat(0.16 if op else 0.045, amp=vol, open_=bool(op)), T + off * spb)
+        # sub + mid bass (root), 3 beats
+        bd = 3 * spb
+        sub = osc('sine', hz(c[0] - 12), bd) * adsr(int(bd * SR), 0.012, 0.18, 0.85, 0.22, 0.85)
+        add(buf, sub * 0.34, T)
+        md = (osc('saw', hz(c[0]), bd, detune=-6) + osc('saw', hz(c[0]), bd, detune=7)) * 0.5
+        md = lp_static(md, 220 + 90 * lv) * adsr(int(bd * SR), 0.02, 0.2, 0.6, 0.25, 0.6)
+        add(buf, md * 0.12, T)
+        # detuned pad on beats 2 & 3 (3rd/5th); airy layer when lit
+        pad_fc = 760 + 420 * lv
+        for beat, semitone in ((1, c[1]), (2, c[2])):
+            pd = np.zeros(0)
+            for det in (-9, -4, 5, 10):
+                s = osc('saw', hz(semitone), spb * 0.92, detune=det)
+                pd = s if pd.size == 0 else pd + s
+            pd = lp_static(pd, pad_fc) * adsr(len(pd), 0.04, 0.25, 0.75, 0.3, 0.75)
+            add(buf, pd * 0.05, T + beat * spb)
+            if lv >= 1:
+                add(buf, strings(hz(semitone + 12), spb * 0.9, amp=0.16), T + beat * spb)
+        # lead (vibrato + octave shimmer), brightness from light[]
+        lead_pk = 0.15 + 0.02 * lv
+        cur = T
+        for nn, ln in mel[b]:
+            ms = semi(nn); d = ln * spb
+            n = int(round(d * 0.96 * SR)); tt = np.arange(n) / SR
+            sig = (osc('saw', hz(ms), d * 0.96, detune=-7)[:n]
+                   + osc('saw', hz(ms), d * 0.96)[:n]
+                   + osc('saw', hz(ms), d * 0.96, detune=8)[:n]) / 3.0
+            sig = sig * (1 + 0.004 * np.sin(2 * np.pi * 5.4 * tt) * np.minimum(1, tt * 6))
+            sig = lp_static(sig, 1200 + 1500 * lv, 1.1)
+            sig *= adsr(n, 0.006, min(0.16, d * 0.35), 0.42, 0.1, 0.42)
+            add(buf, sig * lead_pk, cur)
+            if lv >= 1:
+                sh = osc('triangle', hz(ms + 12), d * 0.55)
+                sh *= adsr(len(sh), 0.004, 0.08, 0.3, 0.06, 0.3)
+                add(buf, sh * lead_pk * 0.22, cur)
+            cur += d
     sig = buf + drum
-    sig = delay(sig, sd * 3, 0.26, 0.16)
-    sig = reverb(sig, mix=0.26, decay=0.6)       # cinematic space
+    sig = delay(sig, spb * 0.5, 0.30, 0.18)        # dotted-ish waltz delay
+    sig = reverb(sig, mix=0.24, decay=0.6)
     return sig, loop, tail
 
 
