@@ -999,7 +999,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.27.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.28.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -1666,6 +1666,10 @@ const STORES = {
       ["ココロッケ",158,"サイド","🥔",false,false,false],
       ["ハリケーンポテト",211,"サイド","🍟",false,false,false],
       ["ライス 150g",161,"サイド","🍚",false,false,false],
+      ["ホロ肉ドカンと豪快カレー（LEVEL1）",1690,"限定カレー","🥩",true,false,false,"limited","rushHolo"],
+      ["ホロ肉ドカンと豪快カレー（LEVEL2）",2220,"限定カレー","🥩",true,false,false,"limited","rushHolo"],
+      ["ホロ肉ドカンと豪快カレー（LEVEL3）",2750,"限定カレー","🥩",true,false,false,"limited","rushHolo"],
+      ["ホロ肉ドカンと豪快カレー（LEVEL4）",3280,"限定カレー","🥩",true,false,false,"limited","rushHolo"],
     ]
   }
 };
@@ -1705,6 +1709,15 @@ try{
   const sm=localStorage.getItem('mg.snd.mute'); if(sm!=null) soundMuted=(sm==='1');
   const bm=localStorage.getItem('mg.bgm.mute'); if(bm!=null) bgmMuted=(bm==='1');
 }catch(e){}
+// ===== ホロ肉ドカンと！ 期間限定（RUSH限定）=====
+const HOLO_RUSH_START='2026-05-18';   // 開始日（当日含む）
+const HOLO_RUSH_END  ='2026-06-18';   // 終了日（当日含む）
+function holoDayNum(){                 // 端末TZ非依存：JST日付の整数キー
+  const n=new Date(Date.now()+9*3600*1000);
+  return n.getUTCFullYear()*10000+(n.getUTCMonth()+1)*100+n.getUTCDate();
+}
+function holoKey(s){ return (+s.slice(0,4))*10000+(+s.slice(5,7))*100+(+s.slice(8,10)); }
+function inHoloWindow(){ const d=holoDayNum(); return d>=holoKey(HOLO_RUSH_START)&&d<=holoKey(HOLO_RUSH_END); }
 const BUDGET_MIN=1000, BUDGET_MAX=5000;
 function budgetStep(){ return budgetMode==='rich'?1000:500; }
 let mustOpen=false;        // 未開封ロック中フラグ
@@ -1798,6 +1811,9 @@ function computeResult(){
   const budget=rollBudget();
   const menu = activeMenu();
   let pool = alcoholOn ? menu.slice() : menu.filter(m=>m[6]!=='alc');
+  // ホロ肉ドカンと！：RUSH(chanceMode)中かつ期間内のみ出現。それ以外は常に除外。
+  const holoOK=(chanceMode===true)&&inHoloWindow();
+  if(!holoOK) pool=pool.filter(m=>m[8]!=='rushHolo');
   let chosen=[], total=0, remain=budget;
 
   let guard=0;
@@ -3847,6 +3863,9 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.28.0', items:[
+    'CoCo壱番屋に期間限定「ホロ肉ドカンと豪快カレー（LEVEL1〜4）」を追加。スロットのRUSH（チャンスモード）中のみ・期間限定で登場します',
+  ] },
   { v:'0.27.0', items:[
     '「遊び方ガイド」を追加。設定⚙の隣の「?」ボタンから、基本ルール・モード・お店・レアリティ・10連・RUSH・ココイチセット割・設定の説明を確認できます',
   ] },
