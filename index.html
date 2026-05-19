@@ -999,7 +999,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.28.1</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.28.2</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -2141,7 +2141,7 @@ function maxRareOf(list){
 function dispenseTen(){
   pendingTen=preTen||Array.from({length:10},()=>computeResult()); preTen=null;
   const mr=maxRareOf(pendingTen);
-  mustOpen = (confirmThreshold!=null && mr.lvl>=confirmThreshold);
+  mustOpen = true;   // 10連は必ず開封してから次へ（レア度を問わずロック）
   clip(mr.lvl>=4?'dHi':mr.lvl>=2?'dMid':'dLow');
   const screen=document.getElementById('screen');
   const caps=pendingTen.map((r,i)=>{
@@ -3868,6 +3868,9 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.28.2', items:[
+    '10連ガチャは必ず開封してから次に進めるように（レア度に関係なく、開けるまで回せません）',
+  ] },
   { v:'0.28.1', items:[
     'SNS共有リンクにバージョン情報を付与。アプリ更新後、X等のリンクカードが古いまま居座らず新しいカードに切り替わりやすくなりました',
   ] },
