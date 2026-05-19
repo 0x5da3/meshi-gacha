@@ -999,7 +999,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.28.2</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.29.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -1718,6 +1718,27 @@ function holoDayNum(){                 // 端末TZ非依存：JST日付の整数
 }
 function holoKey(s){ return (+s.slice(0,4))*10000+(+s.slice(5,7))*100+(+s.slice(8,10)); }
 function inHoloWindow(){ const d=holoDayNum(); return d>=holoKey(HOLO_RUSH_START)&&d<=holoKey(HOLO_RUSH_END); }
+// ===== サイゼリヤ 時間帯メニュー（モーニング / 平日ランチ）=====
+// 祝日は内閣府公表（振替休日・国民の休日を含む）。正確性のため年次で要更新。
+const SAIZE_HOLIDAYS=new Set([
+  '2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20','2026-04-29',
+  '2026-05-03','2026-05-04','2026-05-05','2026-05-06','2026-07-20','2026-08-11',
+  '2026-09-21','2026-09-22','2026-09-23','2026-10-12','2026-11-03','2026-11-23',
+  '2027-01-01','2027-01-11','2027-02-11','2027-02-23','2027-03-21','2027-03-22',
+  '2027-04-29','2027-05-03','2027-05-04','2027-05-05','2027-07-19','2027-08-11',
+  '2027-09-20','2027-09-23','2027-10-11','2027-11-03','2027-11-23',
+]);
+function saizeNow(){                    // 端末TZ非依存：JST の日時
+  const n=new Date(Date.now()+9*3600*1000);
+  return { y:n.getUTCFullYear(), mo:n.getUTCMonth()+1, d:n.getUTCDate(),
+           wday:n.getUTCDay(), hour:n.getUTCHours() };
+}
+function saizeDateStr(t){ return `${t.y}-${String(t.mo).padStart(2,'0')}-${String(t.d).padStart(2,'0')}`; }
+// モーニング：毎日 7:00〜10:00（10:00 で終了 = 7時台〜9時台）
+function inSaizeMorning(){ const t=saizeNow(); return t.hour>=7 && t.hour<10; }
+// 平日ランチ：月〜金の 10:00〜15:00（15:00 で終了）。祝日は対象外。
+function inSaizeLunch(){ const t=saizeNow();
+  return t.wday>=1 && t.wday<=5 && t.hour>=10 && t.hour<15 && !SAIZE_HOLIDAYS.has(saizeDateStr(t)); }
 const BUDGET_MIN=1000, BUDGET_MAX=5000;
 function budgetStep(){ return budgetMode==='rich'?1000:500; }
 let mustOpen=false;        // 未開封ロック中フラグ
@@ -1814,6 +1835,11 @@ function computeResult(){
   // ホロ肉ドカンと！：RUSH(chanceMode)中かつ期間内のみ出現。それ以外は常に除外。
   const holoOK=(chanceMode===true)&&inHoloWindow();
   if(!holoOK) pool=pool.filter(m=>m[8]!=='rushHolo');
+  // サイゼリヤ：モーニング/平日ランチは該当時間帯のみ排出（JST固定。ガチャ/スロット/10連 共通）。
+  if(currentStore==='saizeriya'){
+    if(!inSaizeMorning()) pool=pool.filter(m=>m[2]!=='モーニング');
+    if(!inSaizeLunch())   pool=pool.filter(m=>m[2]!=='ランチ');
+  }
   let chosen=[], total=0, remain=budget;
 
   let guard=0;
@@ -3868,6 +3894,9 @@ renderEnergy();
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.29.0', items:[
+    'サイゼリヤの「モーニング」は毎日7〜10時、「ランチ」は平日（祝日を除く）10〜15時の時間帯にだけ登場するようになりました（日本時間で判定）',
+  ] },
   { v:'0.28.2', items:[
     '10連ガチャは必ず開封してから次に進めるように（レア度に関係なく、開けるまで回せません）',
   ] },
