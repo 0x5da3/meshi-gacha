@@ -425,6 +425,11 @@
   ul.items li .lim{display:inline-block;font-size:9px;font-weight:900;color:#fff;background:var(--oro);padding:0 6px;border-radius:99px;margin-left:6px;vertical-align:middle}
   ul.items li .setb{display:inline-block;font-size:9px;font-weight:900;color:#fff;background:var(--verde);padding:0 6px;border-radius:99px;margin-left:6px;vertical-align:middle}
   .setdisc{text-align:right;font-size:11px;font-weight:900;color:var(--verde);margin-top:4px}
+  ul.items li .swapb{display:inline-block;font-size:10px;font-weight:900;color:var(--rosso);background:#fff;border:1.5px solid var(--oro);padding:1px 8px;border-radius:99px;margin-left:6px;vertical-align:middle;cursor:pointer;font-family:inherit;line-height:1.45;box-shadow:0 1px 0 rgba(0,0,0,.12)}
+  ul.items li .swapb:hover{filter:brightness(1.05)}
+  ul.items li .swapb:active{transform:translateY(1px)}
+  ul.items li .swapb:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+  ul.items li.swapli{box-shadow:inset 3px 0 0 var(--oro)}
   ul.items li .pr{font-family:"Reggae One",cursive;color:var(--rosso);font-size:14px;white-space:nowrap}
   .totalbar{
     display:flex;justify-content:space-between;align-items:center;
@@ -999,7 +1004,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.30.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.31.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -1386,6 +1391,18 @@ function cocoSet(items){
   const ss=Math.min(C1,S-t);                    // カレー+サラダ
   for(let k=0;k<ss;k++){ paired.add(curry[ci++]);paired.add(salad[si++]);discount+=40; }
   return {discount,paired};
+}
+
+// サイゼリヤ：店舗によりどちらか一方のみ販売の2品。結果でタップ相互切替。
+// 価格・カテゴリ等が同一なので入替は表示のみ（合計・おつりに影響なし）。
+// STORES は stores.json fetch 後に充填されるため bootApp() で構築する。
+let SWAP=new Map();
+function buildSwap(){
+  SWAP=new Map();
+  const m=(STORES.saizeriya&&STORES.saizeriya.menu)||[];
+  const a=m.find(x=>x[0]==='ビーフステーキ 肩ロース');
+  const b=m.find(x=>x[0]==='ラムのランプステーキ');
+  if(a&&b){ SWAP.set(a,b); SWAP.set(b,a); }
 }
 
 function computeResult(){
@@ -1826,6 +1843,7 @@ function showDetail(res,back){
     if(b) b.addEventListener('click',back,{once:true});
   }
   wireShare(()=>singleShareText(res.items,res.total,res.budget-res.total,res.budget));
+  wireSwap(res.items,()=>showDetail(res,back));
 }
 
 // ===== RUSH カプセル蓄積（開封せず溜めて、まとめて開封）=====
@@ -1960,9 +1978,9 @@ function resultInner(items,total,left,budget,meta){
     <div class="vsub">${spendNote(left)}</div>
     <ul class="items">
       ${sorted.map((it,i)=>`
-        <li style="animation-delay:${i*70}ms">
+        <li class="${SWAP.has(it)?'swapli':''}" style="animation-delay:${i*70}ms">
           <span class="ico">${it[3]}</span>
-          <span class="nm">${it[0]}${it[7]==='limited'?'<span class="lim">期間限定</span>':''}${setP&&setP.has(it)?'<span class="setb">セット</span>':''}<br><span class="ct">${it[2]}</span></span>
+          <span class="nm">${it[0]}${it[7]==='limited'?'<span class="lim">期間限定</span>':''}${setP&&setP.has(it)?'<span class="setb">セット</span>':''}${SWAP.has(it)?`<button type="button" class="swapb" data-nm="${it[0]}" aria-label="別の肉料理に切り替え">⇄ 店舗により2種・タップで切替</button>`:''}<br><span class="ct">${it[2]}</span></span>
           <span class="pr">¥${it[1]}</span>
         </li>`).join('')}
     </ul>
@@ -1985,6 +2003,7 @@ function render(items,total,left,budget,meta){
   screen.innerHTML=resultInner(items,total,left,budget,meta);
   screen.classList.remove('show');void screen.offsetWidth;screen.classList.add('show');
   wireShare(()=>singleShareText(items,total,left,budget));
+  wireSwap(items,()=>render(items,total,left,budget,meta));
 }
 
 // ===== SNS シェア =====
@@ -2062,6 +2081,18 @@ function wireShare(getText){
   const cb=sc.querySelector('.js-copy');
   if(sb) sb.addEventListener('click',()=>doShare(getText()));
   if(cb) cb.addEventListener('click',()=>copyText(getText(),cb));
+}
+
+// 店舗によりどちらか販売の品をタップで相互入替（itemsArr をその場で差替え再描画）
+function wireSwap(itemsArr,rerender){
+  const sc=document.getElementById('screen');
+  sc.querySelectorAll('.swapb').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const nm=btn.dataset.nm;
+      const k=itemsArr.findIndex(x=>SWAP.has(x)&&x[0]===nm);
+      if(k>=0){ itemsArr[k]=SWAP.get(itemsArr[k]); rerender(); }
+    });
+  });
 }
 
 function renderHist(){
@@ -3460,6 +3491,7 @@ function renderSpec(){
 let storesReady=false;
 function bootApp(){
   storesReady=true;
+  buildSwap();
   applyStore(currentStore);   // 内部で renderRates / renderSpec / renderChance を実行
   renderEnergy();
 }
@@ -3475,6 +3507,9 @@ fetch('stores.json',{cache:'no-store'})
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.31.0', items:[
+    'サイゼリヤの「ビーフステーキ 肩ロース」と「ラムのランプステーキ」（店舗によりどちらか一方を販売）が出たとき、結果の「⇄ 切替」をタップして実際に頼める方へ入れ替えられるようにしました（同価格のため合計・おつりは変わりません）',
+  ] },
   { v:'0.30.0', items:[
     'サイゼリヤは深夜（22時〜翌5時・日本時間）の結果に深夜料金10%を加味。10%込みでも予算におさまるメニューを出すようになりました',
     '店舗メニューのデータを外部ファイル（stores.json）に分離して読み込むよう内部構成を変更（表示や遊び方は変わりません）',
