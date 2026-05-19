@@ -999,7 +999,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.29.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.30.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -1227,455 +1227,15 @@
   style="position:fixed;left:-9999px;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none"></video>
 
 <script>
-const STORES = {
-  saizeriya: {
-    name: 'サイゼリヤ',
-    short: 'サイゼ',
-    emoji: '🍝',
-    tag: 'SAIZERIYA GACHA',
-    theme: { rosso:'#0e8a43', rossoDark:'#084e27', verde:'#d11f3a', oro:'#e6a417' },
-    spec: { type:'ノーマル機', decay:850, boost:1200, triggerLvl:3, stSpins:8, pHit:0.083 },
-    story: {
-      tag:'SAIZE STORY',
-      idle:['🍝','今日のサイゼ、何頼む？'],
-      intro:['📖','メニュー、めくる'],
-      journey:[['🍅','トマト系で攻める？'],['🧀','チーズ盛りも捨てがたい']],
-      reach:['🐌','まさかの エスカルゴ…リーチ！'],
-      super:['🔥','ドリア＆ワイン スーパーリーチ！！'],
-      miss:['🍽️','落ち着いた一皿で締め'],
-      win:['🍷','テーブル満卓ッ 大当たり！！']
-    },
-    menu: [
-      // サイゼリヤ 2026-05 税込
-      ["エスカルゴのオーブン焼き",400,"前菜","🐌",false,false,false],
-      ["アロスティチーニ",400,"前菜","🍢",false,false,false],
-      ["アロスティチーニ Wサイズ",800,"前菜","🍢",false,false,false],
-      ["ムール貝のガーリック焼き",400,"前菜","🦪",false,false,false],
-      ["辛味チキン",300,"前菜","🍗",false,false,false],
-      ["チョリソー",400,"前菜","🌭",false,false,false],
-      ["ポップコーンシュリンプ",300,"前菜","🍤",false,false,false],
-      ["ポテトのグリル",300,"前菜","🥔",false,false,false],
-      ["ほうれん草のソテー",200,"前菜","🥬",false,false,false],
-      ["キャロットラペ",200,"前菜","🥕",false,false,false],
-      ["柔らか青豆の温サラダ",200,"前菜","🫛",false,false,false],
-      ["小エビのサラダ",350,"サラダ","🥗",false,false,false],
-      ["チキンのサラダ",350,"サラダ","🥗",false,false,false],
-      ["わかめのサラダ",350,"サラダ","🥗",false,false,false],
-      ["サイゼリヤドレッシング 500ml",500,"サラダ","🧴",false,false,false],
-      ["たまねぎのズッパ",300,"スープ","🧅",false,false,false],
-      ["コーンクリームスープ",150,"スープ","🌽",false,false,false],
-      ["田舎風ミネストローネ",300,"スープ","🍲",false,false,false],
-      ["冷たいパンプキンスープ",180,"スープ","🎃",false,false,false,"limited"],
-      ["フォッカチオ",150,"パン","🍞",false,false,false],
-      ["ガーリックフォッカチオ",200,"パン","🧄",false,false,false],
-      ["シナモンフォッカチオ",200,"パン","🍞",false,false,false],
-      ["チーズフォッカチオ",250,"パン","🧀",false,false,false],
-      ["タラコフォッカチオ",250,"パン","🍞",false,false,false],
-      ["バッファローモッツァレラのマルゲリータピザ",400,"ピザ","🍕",true,false,false],
-      ["ソーセージピザ",400,"ピザ","🍕",true,false,false],
-      ["たっぷりコーンのピザ",400,"ピザ","🍕",true,false,false],
-      ["野菜ときのこのピザ",400,"ピザ","🍕",true,false,false],
-      ["ミラノ風ドリア",300,"ドリア","🍚",true,false,false],
-      ["半熟卵のミラノ風ドリア",350,"ドリア","🍳",true,false,false],
-      ["焼チーズミラノ風ドリア",350,"ドリア","🧀",true,false,false],
-      ["タラコとポップコーンシュリンプのドリア",400,"ドリア","🍤",true,false,false],
-      ["ポップコーンシュリンプとタラコのクリームグラタン",430,"グラタン","🦐",true,false,false],
-      ["ペペロンチーノ",300,"パスタ","🌶️",true,false,false],
-      ["タラコソースシシリー風",400,"パスタ","🍝",true,false,false],
-      ["小エビのタラコソース",540,"パスタ","🍝",true,false,false],
-      ["ミートソースボロニア風",400,"パスタ","🍝",true,false,false],
-      ["パルマ風スパゲッティ",400,"パスタ","🍝",true,false,false],
-      ["カルボナーラ",500,"パスタ","🍝",true,false,false],
-      ["イカの墨入りセピアソース",500,"パスタ","🦑",true,false,false],
-      ["スープ入り塩味ボンゴレ",500,"パスタ","🍝",true,false,false],
-      ["きのことほうれん草のクリームスパゲッティ",600,"パスタ","🍝",true,false,false],
-      ["ペンネアラビアータ",430,"パスタ","🍝",true,false,false],
-      ["トッピング粉チーズ",100,"パスタ","🧀",false,false,false],
-      ["トッピング半熟卵",50,"パスタ","🍳",false,false,false],
-      ["ハンバーグステーキ",400,"肉料理","🍖",true,false,false],
-      ["イタリアンハンバーグ",500,"肉料理","🍖",true,false,false],
-      ["ディアボラ風ハンバーグ",500,"肉料理","🍖",true,false,false],
-      ["ミックスグリル",650,"肉料理","🍖",true,false,false],
-      ["若鶏のディアボラ風",500,"肉料理","🍗",true,false,false],
-      ["柔らかチキンのチーズ焼き",500,"肉料理","🧀",true,false,false],
-      ["ビーフステーキ 肩ロース",1090,"肉料理","🥩",true,false,false],
-      ["ラムのランプステーキ",1090,"肉料理","🥩",true,false,false],
-      ["トッピング野菜ソース",100,"サイド","🥬",false,false,false],
-      ["ライス",150,"サイド","🍚",false,false,false],
-      ["ラージライス",200,"サイド","🍚",false,false,false],
-      ["スモールライス",100,"サイド","🍚",false,false,false],
-      ["生ハムとバッファローモッツァレラの盛合わせ",500,"おつまみ","🧀",false,false,false],
-      ["バッファローモッツァレラのカプレーゼ",430,"おつまみ","🍅",false,false,false],
-      ["蒸し鶏の香味ソース",280,"おつまみ","🐔",false,false,false],
-      ["小エビのカクテル",280,"おつまみ","🍤",false,false,false],
-      ["ティラミスクラシコ",300,"デザート","🍰",false,true,false],
-      ["プリンとティラミスクラシコ盛合わせ",500,"デザート","🍮",false,true,false],
-      ["イタリアンプリン",250,"デザート","🍮",false,true,false],
-      ["チョコレートケーキ",300,"デザート","🍫",false,true,false],
-      ["ミルクジェラート",250,"デザート","🍨",false,true,false],
-      ["チョコレートケーキ＆ミルクジェラート",500,"デザート","🍫",false,true,false],
-      ["トリフアイスクリーム",350,"デザート","🍦",false,true,false],
-      ["コーヒーゼリー＆ミルクジェラート",350,"デザート","☕",false,true,false],
-      ["ジェラート＆シナモンフォッカチオ",450,"デザート","🍨",false,true,false],
-      ["セットドリンクバー",200,"ドリンク","🥤",false,false,"drink"],
-      ["単品ドリンクバー",300,"ドリンク","🥤",false,false,"drink"],
-      ["キッズドリンクバー",100,"ドリンク","🥤",false,false,"drink"],
-      ["グラスワイン",100,"ワイン","🍷",false,false,"alc"],
-      ["デカンタ小 250ml",200,"ワイン","🍷",false,false,"alc"],
-      ["デカンタ大 500ml",400,"ワイン","🍷",false,false,"alc"],
-      ["マグナム 1500ml",1100,"ワイン","🍷",false,false,"alc"],
-      ["ドンラファエロ",1100,"ワイン","🍷",false,false,"alc"],
-      ["ランブルスコ ロゼ",1100,"ワイン","🍷",false,false,"alc"],
-      ["ランブルスコ セッコ",1100,"ワイン","🍷",false,false,"alc"],
-      ["ベルデッキオ",1100,"ワイン","🍷",false,false,"alc"],
-      ["キャンティ",1100,"ワイン","🍷",false,false,"alc"],
-      ["キャンティ ルフィナ リゼルバ",2200,"ワイン","🍷",false,false,"alc"],
-      ["グラッパ",300,"アルコール","🥃",false,false,"alc"],
-      ["生ビール ジョッキ",400,"ビール","🍺",false,false,"alc"],
-      ["グラスビール",280,"ビール","🍺",false,false,"alc"],
-      ["ノンアルコールビール",250,"ドリンク","🍺",false,false,"drink"],
-      ["キリン氷結 シチリア産レモン",350,"サワー","🍋",false,false,"alc"],
-      ["ランチ タラコソースシシリー風 サラダ付",500,"ランチ","🍝",true,false,false],
-      ["ランチ ミートソースボロニア風 サラダ付",500,"ランチ","🍝",true,false,false],
-      ["ランチ パルマ風スパゲッティ サラダ付",500,"ランチ","🍝",true,false,false],
-      ["ランチ ディアボラ風ハンバーグ ライス付",600,"ランチ","🍖",true,false,false],
-      ["ランチ オニオンソースハンバーグ ライス付",600,"ランチ","🍖",true,false,false],
-      ["ランチセットドリンクバー",200,"ランチ","🥤",false,false,"drink"],
-      ["焼きシナモンフォッカチオ",200,"モーニング","🍞",false,false,false],
-      ["焼きシナモンフォッカチオ コンビ",300,"モーニング","🍞",false,false,false],
-      ["パンチェッタとチーズのパニーニ",300,"モーニング","🥪",false,false,false],
-      ["パンチェッタとチーズのパニーニ コンビ",400,"モーニング","🥪",false,false,false],
-      ["フォッカチオセット",300,"モーニング","🍞",false,false,false],
-    ]
-  },
-  ohsho: {
-    name: '餃子の王将',
-    short: '王将',
-    emoji: '🥟',
-    tag: 'OHSHO GACHA',
-    theme: { rosso:'#c8102e', rossoDark:'#8e0a20', verde:'#0a7a3d', oro:'#e6a417' },
-    spec: { type:'甘デジ', decay:1100, boost:1100, triggerLvl:2, stSpins:6, pHit:0.077 },
-    story: {
-      tag:'OHSHO STORY',
-      idle:['🥟','鉄鍋、あたたまってます'],
-      intro:['🧑‍🍳','見習い、鉄鍋を握る'],
-      journey:[['🔥','強火 入りましたッ'],['🥟','餃子、整列！']],
-      reach:['🍳','鍋ふり一閃…リーチ！'],
-      super:['🌪️','炎の鍋ふりッ スーパーリーチ！！'],
-      miss:['🍚','本日はあっさり定食でしめ'],
-      win:['🐉','満漢の宴 完成ッ 大当たり！！']
-    },
-    menu: [
-      // 餃子の王将 東日本 2026-05 税込
-      ["餃子",363,"餃子","🥟",false,false,false],
-      ["にんにく激増し餃子",385,"餃子","🥟",false,false,false],
-      ["にんにくゼロ生姜餃子",363,"餃子","🥟",false,false,false],
-      ["極王鶏の唐揚",968,"揚物","🍗",true,false,false],
-      ["鶏の唐揚",693,"揚物","🍗",true,false,false],
-      ["スゴ辛チキン",693,"揚物","🌶️",true,false,false],
-      ["油淋鶏",693,"揚物","🍗",true,false,false],
-      ["春巻",352,"点心","🥠",false,false,false],
-      ["肉シューマイ",264,"点心","🥟",false,false,false],
-      ["極王海老のチリソース",1210,"中華","🦐",true,false,false],
-      ["極王酢豚",980,"中華","🍖",true,false,false],
-      ["極王回鍋肉",968,"中華","🥬",true,false,false],
-      ["極王麻婆豆腐",980,"中華","🌶️",true,false,false],
-      ["ニラレバ炒め",638,"中華","🥬",true,false,false],
-      ["海老のチリソース",858,"中華","🦐",true,false,false],
-      ["野菜炒め",649,"中華","🥬",true,false,false],
-      ["酢豚",682,"中華","🍖",true,false,false],
-      ["回鍋肉",638,"中華","🥬",true,false,false],
-      ["麻婆豆腐",660,"中華","🌶️",true,false,false],
-      ["ホルモンの味噌炒め",550,"中華","🍖",true,false,false],
-      ["カニ玉",638,"中華","🦀",true,false,false],
-      ["肉と玉子のいりつけ",715,"中華","🍳",true,false,false],
-      ["棒々鶏",605,"前菜","🐔",false,false,false],
-      ["キムチ",165,"前菜","🥬",false,false,false],
-      ["極王炒飯",858,"炒飯","🍚",true,false,false],
-      ["極王天津飯",825,"丼","🍚",true,false,false],
-      ["極王天津炒飯",1298,"炒飯","🍚",true,false,false],
-      ["炒飯",693,"炒飯","🍚",true,false,false],
-      ["キムチ炒飯",693,"炒飯","🍚",true,false,false],
-      ["天津飯",737,"丼","🍚",true,false,false],
-      ["天津炒飯",814,"炒飯","🍚",true,false,false],
-      ["中華飯",726,"丼","🍚",true,false,false],
-      ["ライス 大",352,"ライス","🍚",false,false,false],
-      ["ライス 中",297,"ライス","🍚",false,false,false],
-      ["ライス 小",275,"ライス","🍚",false,false,false],
-      ["極王餃子の王将ラーメン",980,"麺","🍜",true,false,false],
-      ["極王天津麺",858,"麺","🍜",true,false,false],
-      ["極王焼そば",825,"麺","🍝",true,false,false],
-      ["冷し中華",858,"麺","🍜",true,false,false,"limited"],
-      ["辛い! 冷し中華",968,"麺","🌶️",true,false,false,"limited"],
-      ["辣菜麺",968,"麺","🍜",true,false,false],
-      ["忘れられない中華そば",748,"麺","🍜",true,false,false],
-      ["餃子の王将ラーメン",748,"麺","🍜",true,false,false],
-      ["焦がしニンニク味噌ラーメン",825,"麺","🍜",true,false,false],
-      ["豚辛ラーメン",748,"麺","🍜",true,false,false],
-      ["チャンポン",880,"麺","🍜",true,false,false],
-      ["揚げそば",858,"麺","🍜",true,false,false],
-      ["焼そば ソース",638,"麺","🍝",true,false,false],
-      ["焼そば 醤油",638,"麺","🍝",true,false,false],
-      ["サーターアンダギー",330,"デザート","🍩",false,true,false],
-      ["ごま団子",363,"デザート","🍡",false,true,false],
-      ["杏仁豆腐",220,"デザート","🍮",false,true,false],
-      ["完熟マンゴープリン",234,"デザート","🥭",false,true,false],
-      ["玉子スープ",110,"スープ","🍲",false,false,false],
-      ["餃子 ジャストサイズ",192,"ジャストサイズ","🥟",false,false,false],
-      ["にんにく激増し餃子 ジャストサイズ",209,"ジャストサイズ","🥟",false,false,false],
-      ["にんにくゼロ生姜餃子 ジャストサイズ",192,"ジャストサイズ","🥟",false,false,false],
-      ["極王鶏の唐揚 ジャストサイズ",583,"ジャストサイズ","🍗",false,false,false],
-      ["極王海老のチリソース ジャストサイズ",726,"ジャストサイズ","🦐",false,false,false],
-      ["極王酢豚 ジャストサイズ",594,"ジャストサイズ","🍖",false,false,false],
-      ["極王回鍋肉 ジャストサイズ",583,"ジャストサイズ","🥬",false,false,false],
-      ["極王麻婆豆腐 ジャストサイズ",594,"ジャストサイズ","🌶️",false,false,false],
-      ["極王天津炒飯 ジャストサイズ",748,"ジャストサイズ","🍚",false,false,false],
-      ["鶏の唐揚 ジャストサイズ",390,"ジャストサイズ","🍗",false,false,false],
-      ["スゴ辛チキン ジャストサイズ",412,"ジャストサイズ","🌶️",false,false,false],
-      ["油淋鶏 ジャストサイズ",393,"ジャストサイズ","🍗",false,false,false],
-      ["ニラレバ炒め ジャストサイズ",370,"ジャストサイズ","🥬",false,false,false],
-      ["海老のチリソース ジャストサイズ",466,"ジャストサイズ","🦐",false,false,false],
-      ["野菜炒め ジャストサイズ",370,"ジャストサイズ","🥬",false,false,false],
-      ["酢豚 ジャストサイズ",385,"ジャストサイズ","🍖",false,false,false],
-      ["回鍋肉 ジャストサイズ",370,"ジャストサイズ","🥬",false,false,false],
-      ["麻婆豆腐 ジャストサイズ",359,"ジャストサイズ","🌶️",false,false,false],
-      ["ホルモンの味噌炒め ジャストサイズ",325,"ジャストサイズ","🍖",false,false,false],
-      ["カニ玉 ジャストサイズ",359,"ジャストサイズ","🦀",false,false,false],
-      ["肉と玉子のいりつけ ジャストサイズ",376,"ジャストサイズ","🍳",false,false,false],
-      ["炒飯 ジャストサイズ",371,"ジャストサイズ","🍚",false,false,false],
-      ["天津飯 ジャストサイズ",398,"ジャストサイズ","🍚",false,false,false],
-      ["揚げそば ジャストサイズ",477,"ジャストサイズ","🍜",false,false,false],
-      ["春巻 ジャストサイズ",187,"ジャストサイズ","🥠",false,false,false],
-      ["ごま団子 ジャストサイズ",123,"ジャストサイズ","🍡",false,false,false],
-      ["シャウエッセン ジャストサイズ",275,"ジャストサイズ","🌭",false,false,false],
-      ["生ビール 中 アサヒスーパードライ",528,"ビール","🍺",false,false,"alc"],
-      ["アサヒドライゼロ",363,"ドリンク","🍺",false,false,"drink"],
-      ["サワー",440,"サワー","🍋",false,false,"alc"],
-      ["ウーロンハイ",440,"アルコール","🍵",false,false,"alc"],
-      ["かのか 麦焼酎",418,"アルコール","🥃",false,false,"alc"],
-      ["かのか 芋焼酎",418,"アルコール","🥃",false,false,"alc"],
-      ["クリアハイボール",451,"アルコール","🥃",false,false,"alc"],
-      ["梅酒",330,"アルコール","🍶",false,false,"alc"],
-      ["日本酒 大関",352,"アルコール","🍶",false,false,"alc"],
-      ["紹興酒 小瓶",418,"アルコール","🍶",false,false,"alc"],
-      ["アルパカ カベルネ・メルロー グラス",374,"ワイン","🍷",false,false,"alc"],
-      ["アルパカ カベルネ・メルロー ボトル",1980,"ワイン","🍷",false,false,"alc"],
-      ["アルパカ ソーヴィニヨン・ブラン グラス",374,"ワイン","🍷",false,false,"alc"],
-      ["アルパカ ソーヴィニヨン・ブラン ボトル",1980,"ワイン","🍷",false,false,"alc"],
-      ["アルパカ ロゼ グラス",374,"ワイン","🍷",false,false,"alc"],
-      ["アルパカ ロゼ ボトル",1980,"ワイン","🍷",false,false,"alc"],
-      ["三ツ矢サイダーW",308,"ドリンク","🥤",false,false,"drink"],
-      ["三ツ矢サイダー",275,"ドリンク","🥤",false,false,"drink"],
-      ["三ツ矢サイダーさわやかレモン",275,"ドリンク","🍋",false,false,"drink"],
-      ["バヤリースオレンジ",275,"ドリンク","🍊",false,false,"drink"],
-      ["カルピスウォーター",308,"ドリンク","🥛",false,false,"drink"],
-      ["アサヒ 烏龍茶",275,"ドリンク","🍵",false,false,"drink"],
-      ["アサヒ 十六茶",275,"ドリンク","🍵",false,false,"drink"],
-      ["香味緑茶 颯",275,"ドリンク","🍵",false,false,"drink"],
-      ["ラーメンパック 忘れられない中華そば",302,"お持ち帰り","🍜",false,false,false],
-      ["ラーメンパック 餃子の王将ラーメン",194,"お持ち帰り","🍜",false,false,false],
-      ["ラーメンパック 味噌ラーメン",194,"お持ち帰り","🍜",false,false,false],
-      ["ラーメンパック 冷し中華",194,"お持ち帰り","🍜",false,false,false,"limited"],
-      ["餃子たれ",309,"お持ち帰り","🧂",false,false,false],
-      ["王将マジックパウダー",194,"お持ち帰り","🧂",false,false,false],
-      ["餃子のたれミニパック",200,"お持ち帰り","🧂",false,false,false],
-      ["餃子の王将辣油",270,"お持ち帰り","🌶️",false,false,false],
-      ["お子様弁当",410,"お持ち帰り","🍱",false,false,false],
-      ["レンチン餃子・唐揚弁当",685,"お持ち帰り","🍱",true,false,false],
-      ["レンチン炒飯弁当",988,"お持ち帰り","🍱",true,false,false],
-      ["レンチン焼そば 醤油 弁当",966,"お持ち帰り","🍱",true,false,false],
-      ["レンチン焼そば ソース 弁当",966,"お持ち帰り","🍱",true,false,false],
-      ["レンチン天津飯弁当",1020,"お持ち帰り","🍱",true,false,false],
-    ]
-  },
-  cocoichi: {
-    name: 'CoCo壱番屋',
-    short: 'ココイチ',
-    emoji: '🍛',
-    tag: 'COCO ICHIBANYA GACHA',
-    theme: { rosso:'#e9a100', rossoDark:'#a35f00', verde:'#c8102e', oro:'#b5630a' },
-    spec: { type:'MAX機', decay:650, boost:1450, triggerLvl:3, stSpins:10, pHit:0.10 },
-    story: {
-      tag:'CURRY STORY',
-      idle:['🍛','スパイス、調合中…'],
-      intro:['🧑‍🍳','ルウの鍋に火をつける'],
-      journey:[['🍚','ライス 大盛り 完了'],['🥄','スパイス ひとさじ 投入！']],
-      reach:['🌶️','辛さレベル 上昇…リーチ！'],
-      super:['🔥','激辛ゲート 開放ッ スーパーリーチ！！'],
-      miss:['🍛','ふつうの一皿、でも うまい'],
-      win:['👑','全部のせ 完食王ッ 大当たり！！']
-    },
-    menu: [
-      // CoCo壱番屋 2026-05 税込
-      ["ポークカレー",646,"カレー","🍛",true,false,false],
-      ["甘口ポークカレー",646,"カレー","🍛",true,false,false],
-      ["ビーフカレー",794,"カレー","🍛",true,false,false],
-      ["チキンにこみカレー",934,"カレー","🍛",true,false,false],
-      ["フライドチキン5個カレー",951,"カレー","🍗",true,false,false],
-      ["ハンバーグ2個カレー",976,"カレー","🍖",true,false,false],
-      ["豚しゃぶカレー",982,"カレー","🐖",true,false,false],
-      ["メンチカツカレー",972,"カレー","🍛",true,false,false],
-      ["ソーセージ4本カレー",994,"カレー","🌭",true,false,false],
-      ["チキンカツカレー",994,"カレー","🍗",true,false,false],
-      ["パリパリチキンカレー",994,"カレー","🍗",true,false,false],
-      ["ロースカツカレー",998,"カレー","🍛",true,false,false],
-      ["手仕込とんかつカレー",1192,"カレー","🍛",true,false,false],
-      ["牛すじ煮込みカレー",1132,"カレー","🐄",true,false,false],
-      ["プチエビフライカレー",822,"カレー","🍤",true,false,false],
-      ["フィッシュフライ2本カレー",858,"カレー","🐟",true,false,false],
-      ["たっぷりあさりカレー",858,"カレー","🦪",true,false,false],
-      ["イカカレー",910,"カレー","🦑",true,false,false],
-      ["エビにこみカレー",910,"カレー","🍤",true,false,false],
-      ["エビあさりカレー",884,"カレー","🍤",true,false,false],
-      ["海の幸カレー",1016,"カレー","🦐",true,false,false],
-      ["なす6個カレー",826,"カレー","🍆",true,false,false],
-      ["ほうれん草カレー",898,"カレー","🥬",true,false,false],
-      ["やさいカレー",918,"カレー","🥗",true,false,false],
-      ["とろ～りたまフライカレー",845,"カレー","🍳",true,false,false],
-      ["ココイチベジカレー",683,"カレー","🌱",true,false,false],
-      ["オムカレー",779,"カレー","🍳",true,false,false],
-      ["低糖質カレー",725,"カレー","🍛",true,false,false],
-      ["納豆カレー",813,"カレー","🫘",true,false,false],
-      ["スクランブルエッグカレー",866,"カレー","🍳",true,false,false],
-      ["チーズカレー",910,"カレー","🧀",true,false,false],
-      ["クリームコロッケ カニ入り 2個カレー",888,"カレー","🦀",true,false,false],
-      ["きのこカレー",888,"カレー","🍄",true,false,false],
-      ["なすとほうれん草のカレードリア",817,"カレー","🍚",true,false,false],
-      ["ハンバーグカレードリア",817,"カレー","🍚",true,false,false],
-      ["ハヤシライス",896,"ハヤシ","🍛",true,false,false],
-      ["スモールポークカレー",556,"スモール","🍛",true,false,false],
-      ["スモールビーフカレー",704,"スモール","🍛",true,false,false],
-      ["スモールココイチベジカレー",593,"スモール","🌱",true,false,false],
-      ["スモールエビにこみカレー",688,"スモール","🍤",true,false,false],
-      ["スモールスクランブルエッグカレー",666,"スモール","🍳",true,false,false],
-      ["スモールクリームコロッケ カニ入カレー",677,"スモール","🦀",true,false,false],
-      ["スモールやさいカレー",692,"スモール","🥗",true,false,false],
-      ["スモールほうれん草カレー",682,"スモール","🥬",true,false,false],
-      ["スモールフライドチキンカレー",739,"スモール","🍗",true,false,false],
-      ["スモールきのこカレー",677,"スモール","🍄",true,false,false],
-      ["スモールチーズカレー",688,"スモール","🧀",true,false,false],
-      ["スモールハンバーグカレー",721,"スモール","🍖",true,false,false],
-      ["スモールソーセージカレー",730,"スモール","🌭",true,false,false],
-      ["スモールイカカレー",688,"スモール","🦑",true,false,false],
-      ["特定原材料を使用していないカレー ライス200g",464,"アレルギー対応","🍛",true,false,false],
-      ["特定原材料を使用していないカレー ライス100g",232,"アレルギー対応","🍛",true,false,false],
-      ["お子さまカレー ハンバーグ",456,"お子さま","🧒",false,false,false],
-      ["お子さまカレー フライドチキン",456,"お子さま","🧒",false,false,false],
-      ["お子さまカレー ハンバーグ＆フライドチキン",550,"お子さま","🧒",false,false,false],
-      ["お子さまカレー クリームコロッケ＆フライドチキン",550,"お子さま","🧒",false,false,false],
-      ["ミニお子さまカレー",352,"お子さま","🧒",false,false,false],
-      ["ミニお子さまナンカレー",352,"お子さま","🫓",false,false,false],
-      ["1歳からのやさしい野菜カレー",210,"お子さま","🍼",false,false,false],
-      ["ベビーフード",189,"お子さま","🍼",false,false,false],
-      ["単品ミニナン",148,"お子さま","🫓",false,false,false],
-      ["カレーうどん",850,"麺","🍜",true,false,false],
-      ["カレーうどん ライス付",960,"麺","🍜",true,false,false],
-      ["カレーらーめん",890,"麺","🍜",true,false,false],
-      ["チャーシューカレーらーめん",1250,"麺","🍜",true,false,false],
-      ["カレーらーめん ライス付",1000,"麺","🍜",true,false,false],
-      ["チャーシューカレーらーめん ライス付",1360,"麺","🍜",true,false,false],
-      ["手仕込ささみカツ 2本",544,"トッピング","🍗",false,false,false,"limited"],
-      ["手仕込ささみカツ 1本",272,"トッピング","🍗",false,false,false,"limited"],
-      ["ハンバーグ 1個",165,"トッピング","🍖",false,false,false],
-      ["ハーフ豚しゃぶ",168,"トッピング","🐖",false,false,false],
-      ["ソーセージ 2本",174,"トッピング","🌭",false,false,false],
-      ["フライドチキン 3個",183,"トッピング","🍗",false,false,false],
-      ["チキンにこみ",288,"トッピング","🍗",false,false,false],
-      ["フライドチキン 5個",305,"トッピング","🍗",false,false,false],
-      ["メンチカツ",326,"トッピング","🍴",false,false,false],
-      ["豚しゃぶ",336,"トッピング","🐖",false,false,false],
-      ["チキンカツ",348,"トッピング","🍗",false,false,false],
-      ["パリパリチキン",348,"トッピング","🍗",false,false,false],
-      ["ロースカツ",352,"トッピング","🍴",false,false,false],
-      ["手仕込とんかつ",546,"トッピング","🍴",false,false,false],
-      ["フィッシュフライ 1本",106,"トッピング","🐟",false,false,false],
-      ["ハーフあさり",106,"トッピング","🦪",false,false,false],
-      ["ハーフイカ",132,"トッピング","🦑",false,false,false],
-      ["ハーフエビにこみ",132,"トッピング","🍤",false,false,false],
-      ["ツナ",138,"トッピング","🐟",false,false,false],
-      ["プチエビフライ",176,"トッピング","🍤",false,false,false],
-      ["たっぷりあさり",212,"トッピング","🦪",false,false,false],
-      ["エビあさり",238,"トッピング","🍤",false,false,false],
-      ["エビにこみ",264,"トッピング","🍤",false,false,false],
-      ["イカ",264,"トッピング","🦑",false,false,false],
-      ["海の幸",370,"トッピング","🦐",false,false,false],
-      ["桜えびとあさりの春野菜",366,"トッピング","🌸",false,false,false,"limited"],
-      ["なす 3個",90,"トッピング","🍆",false,false,false],
-      ["ハーフほうれん草",126,"トッピング","🥬",false,false,false],
-      ["ハーフやさい",136,"トッピング","🥗",false,false,false],
-      ["コーン",91,"トッピング","🌽",false,false,false],
-      ["単品ポテト",91,"トッピング","🥔",false,false,false],
-      ["旨辛にんにく",174,"トッピング","🧄",false,false,false],
-      ["ほうれん草",252,"トッピング","🥬",false,false,false],
-      ["やさい",272,"トッピング","🥗",false,false,false],
-      ["わさびタルタル",143,"トッピング","🥫",false,false,false,"limited"],
-      ["とろ～りたまフライ",199,"トッピング","🍳",false,false,false],
-      ["ハーフスクランブルエッグ",110,"トッピング","🍳",false,false,false],
-      ["ハーフきのこ",121,"トッピング","🍄",false,false,false],
-      ["クリームコロッケ カニ入り 1個",121,"トッピング","🦀",false,false,false],
-      ["ハーフチーズ",132,"トッピング","🧀",false,false,false],
-      ["クリーミータルタルソース",74,"トッピング","🥫",false,false,false],
-      ["半熟タマゴ",120,"トッピング","🥚",false,false,false],
-      ["ゆでタマゴ",120,"トッピング","🥚",false,false,false],
-      ["半熟タマゴタルタルソース",194,"トッピング","🥚",false,false,false],
-      ["納豆",167,"トッピング","🫘",false,false,false],
-      ["スクランブルエッグ",220,"トッピング","🍳",false,false,false],
-      ["きのこ",242,"トッピング","🍄",false,false,false],
-      ["チーズ",264,"トッピング","🧀",false,false,false],
-      ["THE牛カレー",1232,"限定カレー","🐄",true,false,false,"limited"],
-      ["手仕込ささみカツ2本カレー",1190,"限定カレー","🍗",true,false,false,"limited"],
-      ["桜えびとあさりの春野菜カレー",1012,"限定カレー","🌸",true,false,false,"limited"],
-      ["厚切りベーコンとスモークチーズのスープカレー ライス付",1160,"限定カレー","🥓",true,false,false,"limited"],
-      ["ローストチキンスープカレー ライス付",1110,"限定カレー","🍗",true,false,false,"limited"],
-      ["ベーススープカレー ライス付",750,"限定カレー","🍛",true,false,false,"limited"],
-      ["ヤサイサラダ",230,"サラダ","🥗",false,false,false],
-      ["シーザーサラダ",275,"サラダ","🥗",false,false,false],
-      ["タマゴサラダ",350,"サラダ","🥚",false,false,false],
-      ["コーンサラダ",321,"サラダ","🌽",false,false,false],
-      ["ツナサラダ",368,"サラダ","🐟",false,false,false],
-      ["ポテトサラダ",321,"サラダ","🥔",false,false,false],
-      ["イカサラダ",362,"サラダ","🦑",false,false,false],
-      ["フライドチキン3個サラダ",413,"サラダ","🍗",false,false,false],
-      ["ソーセージ2本サラダ",404,"サラダ","🌭",false,false,false],
-      ["ラッシー プレーン",220,"ドリンク","🥤",false,false,"drink"],
-      ["アイスミルク",220,"ドリンク","🥛",false,false,"drink"],
-      ["オレンジドリンク",220,"ドリンク","🍊",false,false,"drink"],
-      ["コカ・コーラ",220,"ドリンク","🥤",false,false,"drink"],
-      ["アイスコーヒー",220,"ドリンク","☕",false,false,"drink"],
-      ["アイスカフェ・オ・レ",220,"ドリンク","☕",false,false,"drink"],
-      ["本格珈琲 Rサイズ",170,"ドリンク","☕",false,false,"drink"],
-      ["本格珈琲 Lサイズ",220,"ドリンク","☕",false,false,"drink"],
-      ["ホットコーヒー",220,"ドリンク","☕",false,false,"drink"],
-      ["コーンスープ",346,"スープ","🌽",false,false,false],
-      ["キリン ノンアルコールビール",317,"ドリンク","🍺",false,false,"drink"],
-      ["キリン一番搾り",367,"ビール","🍺",false,false,"alc"],
-      ["濃厚バニラアイスクリーム",350,"デザート","🍦",false,true,false],
-      ["ポークカレーパン",320,"サイド","🥐",false,false,false],
-      ["ココイチバラエティボックスA",1192,"サイド","🍱",true,false,false],
-      ["ココイチバラエティボックスB",1217,"サイド","🍱",true,false,false],
-      ["ココイチバラエティボックスC",700,"サイド","🍱",true,false,false],
-      ["CoCo de チキン",298,"サイド","🍗",false,false,false],
-      ["らっきょう",50,"サイド","🥬",false,false,false],
-      ["ナン",296,"サイド","🫓",false,false,false],
-      ["ポークソース 一人前",415,"サイド","🥫",false,false,false],
-      ["甘口ポークソース 一人前",415,"サイド","🥫",false,false,false],
-      ["ビーフソース 一人前",499,"サイド","🥫",false,false,false],
-      ["ココイチベジソース 一人前",473,"サイド","🥫",false,false,false],
-      ["フライドポテト",172,"サイド","🍟",false,false,false],
-      ["フライドポテト 大盛",344,"サイド","🍟",false,false,false],
-      ["ココロッケ",158,"サイド","🥔",false,false,false],
-      ["ハリケーンポテト",211,"サイド","🍟",false,false,false],
-      ["ライス 150g",161,"サイド","🍚",false,false,false],
-      ["ホロ肉ドカンと豪快カレー（LEVEL1）",1690,"限定カレー","🥩",true,false,false,"limited","rushHolo"],
-      ["ホロ肉ドカンと豪快カレー（LEVEL2）",2220,"限定カレー","🥩",true,false,false,"limited","rushHolo"],
-      ["ホロ肉ドカンと豪快カレー（LEVEL3）",2750,"限定カレー","🥩",true,false,false,"limited","rushHolo"],
-      ["ホロ肉ドカンと豪快カレー（LEVEL4）",3280,"限定カレー","🥩",true,false,false,"limited","rushHolo"],
-    ]
-  }
-};
+// 店舗データは stores.json（fetch 読込）。STORES はブート時に充填される。
+let STORES = {};
 
 let currentStore = 'cocoichi';
-function activeMenu(){ return STORES[currentStore].menu; }
+function activeMenu(){ return (STORES[currentStore]||{}).menu||[]; }
+// サイゼリヤ深夜料金：JST 22:00〜翌5:00 は会計を +10%（予算は加味後で判定）
+function jstHour(){ return new Date(Date.now()+9*3600*1000).getUTCHours(); }
+function isLateNight(){ const h=jstHour(); return h>=22 || h<5; }
+function nightRate(){ return (currentStore==='saizeriya' && isLateNight()) ? 1.10 : 1; }
 
 // 見出しはレア度（＝引いた予算の大きさ）で決まる。小予算で「完全勝利」とは言わない
 const VERDICT = [
@@ -1840,7 +1400,9 @@ function computeResult(){
     if(!inSaizeMorning()) pool=pool.filter(m=>m[2]!=='モーニング');
     if(!inSaizeLunch())   pool=pool.filter(m=>m[2]!=='ランチ');
   }
-  let chosen=[], total=0, remain=budget;
+  const nrate=nightRate();
+  // 深夜料金がある場合、会計(=小計×rate)が予算内に収まるよう小計の上限を圧縮
+  let chosen=[], total=0, remain = nrate>1 ? Math.floor(budget/nrate) : budget;
 
   let guard=0;
   while(guard++<60 && chosen.length<10){
@@ -1864,9 +1426,11 @@ function computeResult(){
     chosen.push(m); total+=m[1]; remain-=m[1];
     // 早期停止なし：候補が尽きるか10品到達まで続行
   }
-  const result={items:chosen,total,budget};
+  const charged = nrate>1 ? Math.round(total*nrate) : total;
+  const result={items:chosen,total:charged,budget};
+  if(nrate>1){ result.subtotal=total; result.nightRate=nrate; result.nightCharge=charged-total; }
   const sd=cocoSet(chosen);
-  if(sd.discount>0){ result.total=total-sd.discount; result.setDiscount=sd.discount; result.setPaired=sd.paired; }
+  if(sd.discount>0){ result.total=result.total-sd.discount; result.setDiscount=sd.discount; result.setPaired=sd.paired; }
   return result;
 }
 
@@ -2407,6 +1971,7 @@ function resultInner(items,total,left,budget,meta){
       <span class="tot">¥${total.toLocaleString()}<small> / ¥${budget.toLocaleString()}</small></span>
     </div>
     ${setD?`<div class="setdisc">🍛 CoCo壱セット割 −¥${setD.toLocaleString()}</div>`:''}
+    ${meta&&meta.nightCharge?`<div class="setdisc">🌙 深夜料金(+10%) +¥${meta.nightCharge.toLocaleString()}（小計 ¥${meta.subtotal.toLocaleString()}）</div>`:''}
     <div class="meter"><i style="width:${pct}%"></i></div>
     <div class="remain">おつり ¥${left.toLocaleString()}</div>
     <div class="sharebar">
@@ -3611,6 +3176,7 @@ if(slotstartBtn) slotstartBtn.addEventListener('click',startGacha);
 
 function startGacha(){
   if(spinning) return;
+  if(!storesReady) return;          // 店舗データ未読込のうちは回せない
   if(mustOpen){ flashLock(); return; }
   spinning=true;
   bgmStart();                       // スロットモードならプレイ開始でBGM始動（多重起動はしない）
@@ -3889,11 +3455,30 @@ function renderSpec(){
        <div><span>SR継続</span><b>確定</b></div>
      </div>`;
 }
-applyStore(currentStore);   // 内部で renderRates / renderSpec / renderChance を実行
-renderEnergy();
+// 店舗データは stores.json から fetch して充填（http(s) 配信が前提。
+// file:// 直開きは CORS によりブロックされるため非対応）。
+let storesReady=false;
+function bootApp(){
+  storesReady=true;
+  applyStore(currentStore);   // 内部で renderRates / renderSpec / renderChance を実行
+  renderEnergy();
+}
+fetch('stores.json',{cache:'no-store'})
+  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(d=>{ STORES=d; bootApp(); })
+  .catch(err=>{
+    console.error('stores.json の読み込みに失敗:',err);
+    const sc=document.getElementById('screen');
+    if(sc) sc.innerHTML='<div class="placeholder"><div class="big">メニュー読込エラー</div>'
+      +'<div>stores.json を読み込めませんでした。<br>http(s) で配信してお試しください（file:// 直開きは非対応）。</div></div>';
+  });
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.30.0', items:[
+    'サイゼリヤは深夜（22時〜翌5時・日本時間）の結果に深夜料金10%を加味。10%込みでも予算におさまるメニューを出すようになりました',
+    '店舗メニューのデータを外部ファイル（stores.json）に分離して読み込むよう内部構成を変更（表示や遊び方は変わりません）',
+  ] },
   { v:'0.29.0', items:[
     'サイゼリヤの「モーニング」は毎日7〜10時、「ランチ」は平日（祝日を除く）10〜15時の時間帯にだけ登場するようになりました（日本時間で判定）',
   ] },

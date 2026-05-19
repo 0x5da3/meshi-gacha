@@ -1,7 +1,9 @@
 # meshi-gacha
 
-予算内でランダムに注文が決まるガチャ風 Web アプリ。実体は単一ファイル `index.html`
-（HTML/CSS/JS 一体）。ビルド工程はなく、ブラウザで開けば動作する。
+予算内でランダムに注文が決まるガチャ風 Web アプリ。UI/ロジックは `index.html`
+（HTML/CSS/JS 一体）、店舗メニューデータは `stores.json` に分離。ビルド工程は
+ないが、`stores.json` を `fetch` で読むため **http(s) 配信が前提**（GitHub Pages
+等）。`file://` 直開きは CORS によりメニューが読めず非対応。
 
 ## 応答方針
 
@@ -10,8 +12,12 @@
 
 ## 開発メモ
 
-- 店舗データは `index.html` 内の `STORES` オブジェクトで定義。各店舗に
-  `name / short / emoji / menu / theme` を持つ。
+- 店舗データは `stores.json`（リポジトリ直下）で定義し、起動時に `fetch` で
+  読み込んで `STORES` に充填する（`index.html` 内は `let STORES={}` の器のみ）。
+  各店舗に `name / short / emoji / tag / theme / spec / story / menu` を持つ。
+  メニュー追加・価格改定は `stores.json` を編集する（`index.html` ではない）。
+- サイゼリヤは JST 22:00〜翌5:00 の結果に深夜料金 +10% を加味し、加味後でも
+  予算内に収まるよう `computeResult()` が小計上限を圧縮する。
 - `theme`（`rosso / rossoDark / verde / oro`）は `applyStore()` で CSS 変数に反映され、
   筐体（ガチャマシン）の配色が店舗ごとに切り替わる。
 
@@ -24,8 +30,8 @@
 - **MAJOR バージョンの変更は必ず事前にユーザー確認を取る**（自動で上げない。
   必要と判断したら理由を添えて提案し、承認を得てから変更する）。
   MINOR / PATCH は方針に沿って都度更新してよい。
-- 現行バージョンは `0.28.2`。表示は `index.html` ヘッダーの `.ver` バッジ
-  （`<button class="ver" id="verBadge">v0.28.2</button>`）が唯一の表示箇所。
+- 現行バージョンは `0.30.0`。表示は `index.html` ヘッダーの `.ver` バッジ
+  （`<button class="ver" id="verBadge">v0.30.0</button>`）が唯一の表示箇所。
   バージョン更新時はここを書き換える。タイトル（`<head><title>` /
   `document.title`）は「飯ガチャ」固定でバージョンは含めない。
 - バージョンバッジをクリックするとアップデート履歴モーダル
