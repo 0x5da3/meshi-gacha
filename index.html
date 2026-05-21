@@ -192,6 +192,19 @@
   .msbtn:not(.on):hover{background:rgba(200,16,46,.1)}
   .msbtn:active{transform:scale(.96)}
 
+  /* ---- メニュー一覧ボタン（ヘッダー）---- */
+  .menubtn{
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(255,255,255,.6);
+    border:2px solid var(--rosso);border-radius:99px;
+    padding:3px 11px;margin:5px 0 0 5px;
+    font-family:"Reggae One",cursive;font-size:11px;
+    color:var(--rosso);cursor:pointer;letter-spacing:.02em;
+    box-shadow:2px 2px 0 rgba(0,0,0,.12);vertical-align:middle;
+  }
+  .menubtn:hover{background:rgba(200,16,46,.1)}
+  .menubtn:active{transform:scale(.96)}
+
   /* ---- machine ---- */
   .machine{
     background:var(--rosso);
@@ -1027,7 +1040,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.32.2</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.33.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -1038,6 +1051,7 @@
       <button class="msbtn on" data-mode="gacha" role="tab" aria-selected="true">🎰 ガチャ</button>
       <button class="msbtn" data-mode="slot" role="tab" aria-selected="false">🎲 スロット</button>
     </div>
+    <button class="menubtn" id="menuListBtn" type="button" aria-haspopup="dialog" aria-label="このお店のメニュー一覧を表示">📋 メニュー一覧</button>
   </header>
 
   <div class="machine mode-gacha" id="machine">
@@ -1235,7 +1249,7 @@
 <div class="modal-bg" id="menuDbgModal" role="dialog" aria-modal="true" aria-labelledby="menuDbgTitle" hidden>
   <div class="modal-card menu-card">
     <div class="modal-h">
-      <span id="menuDbgTitle">🛠️ メニュー一覧（デバッグ）</span>
+      <span id="menuDbgTitle">📋 メニュー一覧</span>
       <button class="modal-x" id="menuDbgClose" aria-label="閉じる">×</button>
     </div>
     <div class="modal-body menu-body" id="menuDbgBody"></div>
@@ -3573,6 +3587,9 @@ fetch('stores.json',{cache:'no-store'})
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.33.0', items:[
+    '店舗ごとの「メニュー一覧」を本機能化。ヘッダーの📋ボタン（またはモニタを3回タップ）で、現在のお店の全メニューを確認できます',
+  ] },
   { v:'0.32.2', items:[
     '餃子の王将のメニューから「野菜炒め」を削除（「野菜炒め ジャストサイズ」は引き続き登場します）',
   ] },
@@ -3786,9 +3803,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && helpModal && !helpModal.hidden) closeHelp();
 });
 
-// デバッグ専用：モニタを3回タップでその店のメニュー一覧をウィンドウ表示
-const DEBUG = /[?&#]debug\b/.test(location.search + location.hash)
-           || (()=>{ try{ return localStorage.getItem('mg.debug')==='1'; }catch(e){ return false; } })();
+// メニュー一覧：ヘッダーの📋ボタン or モニタ3タップでその店の全メニューをウィンドウ表示
 const mdbgModal=document.getElementById('menuDbgModal');
 const mdbgBody=document.getElementById('menuDbgBody');
 const mdbgClose=document.getElementById('menuDbgClose');
@@ -3815,7 +3830,8 @@ if(mdbgModal) mdbgModal.addEventListener('click',e=>{ if(e.target===mdbgModal) c
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && mdbgModal && !mdbgModal.hidden) closeDbgMenu();
 });
-if(DEBUG && monitorEl){
+// モニタ3タップでも開ける（隠しショートカット）
+if(monitorEl){
   let taps=0, tt=null;
   monitorEl.style.cursor='pointer';
   monitorEl.addEventListener('click',()=>{
@@ -3825,6 +3841,9 @@ if(DEBUG && monitorEl){
     tt=setTimeout(()=>{ taps=0; }, 800);
   });
 }
+// ヘッダーの📋メニュー一覧ボタン
+const menuListBtn=document.getElementById('menuListBtn');
+if(menuListBtn) menuListBtn.addEventListener('click',openDbgMenu);
 
 // 設定モーダル：筐体の⚙ボタンで開閉（変更履歴モーダルと同じ作法を流用）
 const setBtn=document.getElementById('setBtn');
