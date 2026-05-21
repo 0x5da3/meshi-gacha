@@ -209,6 +209,19 @@
   .dsbtn:not(.on):hover{background:rgba(200,16,46,.1)}
   .dsbtn:active{transform:scale(.96)}
 
+  /* ---- メニュー一覧ボタン（ヘッダー）---- */
+  .menubtn{
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(255,255,255,.6);
+    border:2px solid var(--rosso);border-radius:99px;
+    padding:3px 11px;margin:5px 0 0 5px;
+    font-family:"Reggae One",cursive;font-size:11px;
+    color:var(--rosso);cursor:pointer;letter-spacing:.02em;
+    box-shadow:2px 2px 0 rgba(0,0,0,.12);vertical-align:middle;
+  }
+  .menubtn:hover{background:rgba(200,16,46,.1)}
+  .menubtn:active{transform:scale(.96)}
+
   /* ---- machine ---- */
   .machine{
     background:var(--rosso);
@@ -1014,6 +1027,29 @@
   .sharebar button.primary{background:var(--rosso);color:#fff}
   .sharebar button:hover{opacity:.92}
   .sharebar button:active{transform:scale(.97)}
+
+  /* ---- エラートースト（機能不調の通知）---- */
+  .toast-stack{
+    position:fixed;left:50%;top:14px;transform:translateX(-50%);
+    z-index:200;pointer-events:none;
+    display:flex;flex-direction:column;gap:8px;align-items:center;
+    max-width:92vw;
+  }
+  .toast{
+    pointer-events:auto;
+    font-family:"Reggae One",cursive;
+    font-size:12.5px;letter-spacing:.02em;line-height:1.35;
+    padding:9px 14px;border-radius:99px;
+    color:#fff;background:#c8102e;
+    box-shadow:0 6px 18px rgba(0,0,0,.32),0 2px 0 rgba(0,0,0,.18);
+    opacity:0;transform:translateY(-8px) scale(.96);
+    transition:opacity .22s ease,transform .22s cubic-bezier(.2,1.5,.4,1);
+    max-width:92vw;word-break:break-word;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateY(0) scale(1)}
+  .toast-error{background:linear-gradient(180deg,#ff3a55,#b3001b)}
+  .toast-warn {background:linear-gradient(180deg,#ffb13a,#c97a00);color:#3a1f00}
+  .toast-info {background:linear-gradient(180deg,#5b6b80,#2f3a4a)}
 </style>
 </head>
 <body>
@@ -1021,10 +1057,10 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.32.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.34.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
-      <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
+      <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 CoCo壱番屋</button>
       <button class="ssbtn" data-store="saizeriya" role="tab" aria-selected="false">🍝 サイゼリヤ</button>
       <button class="ssbtn" data-store="ohsho" role="tab" aria-selected="false">🥟 餃子の王将</button>
     </div>
@@ -1036,6 +1072,7 @@
       <button class="dsbtn on" data-dine="inshop" role="tab" aria-selected="true">🏪 店内</button>
       <button class="dsbtn" data-dine="takeout" role="tab" aria-selected="false">🛍 持ち帰り</button>
     </div>
+    <button class="menubtn" id="menuListBtn" type="button" aria-haspopup="dialog" aria-label="このお店のメニュー一覧を表示">📋 メニュー一覧</button>
   </header>
 
   <div class="machine mode-gacha" id="machine">
@@ -1089,7 +1126,7 @@
   <div class="screen" id="screen">
     <div class="placeholder">
       <div class="big">レバーを回そう！</div>
-      <div>上のツマミをまわすと予算（¥1,000〜¥5,000）と<br><span id="brandShort">サイゼ</span>のメニューが同時にランダム決定！<br>高額予算ほど超レアです 💎</div>
+      <div>上のツマミをまわすと予算（¥1,000〜¥5,000）と<br><span id="brandShort">CoCo壱番屋</span>のメニューが同時にランダム決定！<br>高額予算ほど超レアです 💎</div>
     </div>
   </div>
 
@@ -1233,7 +1270,7 @@
 <div class="modal-bg" id="menuDbgModal" role="dialog" aria-modal="true" aria-labelledby="menuDbgTitle" hidden>
   <div class="modal-card menu-card">
     <div class="modal-h">
-      <span id="menuDbgTitle">🛠️ メニュー一覧（デバッグ）</span>
+      <span id="menuDbgTitle">📋 メニュー一覧</span>
       <button class="modal-x" id="menuDbgClose" aria-label="閉じる">×</button>
     </div>
     <div class="modal-body menu-body" id="menuDbgBody"></div>
@@ -1253,6 +1290,46 @@
   style="position:fixed;left:-9999px;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none"></video>
 
 <script>
+// ===== エラートースト（機能不調の通知）=====
+// 画面右上中央に短時間表示し、同一メッセージは3秒間まとめる。
+const _toastSeen=new Map();
+function showToast(msg, opts){
+  opts = opts || {};
+  const type = opts.type || 'error';            // 'error' | 'warn' | 'info'
+  const ms   = (typeof opts.ms==='number') ? opts.ms : 4500;
+  const text = String(msg==null ? '不明なエラー' : msg).slice(0,200);
+  const key  = type+'|'+text;
+  const now  = Date.now();
+  const last = _toastSeen.get(key) || 0;
+  if(now - last < 3000) return;                 // 連続スパムを抑制
+  _toastSeen.set(key, now);
+  let stack = document.getElementById('toastStack');
+  if(!stack){
+    stack = document.createElement('div');
+    stack.id = 'toastStack';
+    stack.className = 'toast-stack';
+    stack.setAttribute('aria-live','polite');
+    stack.setAttribute('aria-atomic','false');
+    (document.body || document.documentElement).appendChild(stack);
+  }
+  const t = document.createElement('div');
+  t.className = 'toast toast-'+type;
+  t.setAttribute('role', type==='error'?'alert':'status');
+  t.textContent = text;
+  stack.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),320); }, ms);
+}
+window.addEventListener('error', e=>{
+  const m = (e && (e.message || (e.error && e.error.message))) || '不明なエラー';
+  showToast('エラー: '+m);
+});
+window.addEventListener('unhandledrejection', e=>{
+  const r = e && e.reason;
+  const m = (r && (r.message || r.toString && r.toString())) || String(r||'非同期エラー');
+  showToast('エラー: '+m);
+});
+
 // 店舗データは stores.json（fetch 読込）。STORES はブート時に充填される。
 let STORES = {};
 
@@ -1990,13 +2067,13 @@ function renderRush(list){
 }
 
 function rushShareText(list){
-  const s=STORES[currentStore];
+  const s=STORES[currentStore]||{emoji:'',name:''};
   const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
   const cnt={};
   list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
   const summary=[4,3,2,1,0].filter(l=>cnt[l]).map(l=>`${SHORT[l]}×${cnt[l]}`).join(' ');
   const tot=list.reduce((a,r)=>a+r.total,0);
-  return `${s.emoji}${s.short}｜飯ガチャ 🔥RUSH ${list.length}連！\n`
+  return `${s.emoji}${s.name}｜飯ガチャ 🔥RUSH ${list.length}連！\n`
        + `${summary}\n`
        + `合計 ¥${tot.toLocaleString()}\n`
        + `#飯ガチャ`;
@@ -2070,23 +2147,23 @@ function shareUrl(){
 }
 
 function singleShareText(items,total,left,budget){
-  const s=STORES[currentStore];
+  const s=STORES[currentStore]||{emoji:'',name:''};
   const rare=budgetRarity(budget);
   const names=sortItemsByCategory(items).map(it=>`${it[3]}${it[0]}${it[7]==='limited'?'(期間限定)':''}`).join('\n');
-  return `${s.emoji}${s.short}｜飯ガチャ｜予算 ¥${budget.toLocaleString()}（${rare.t}）\n`
+  return `${s.emoji}${s.name}｜飯ガチャ｜予算 ¥${budget.toLocaleString()}（${rare.t}）\n`
        + `${names}\n`
        + `合計 ¥${total.toLocaleString()}（おつり ¥${left.toLocaleString()}）\n`
        + `#飯ガチャ`;
 }
 
 function tenShareText(list){
-  const s=STORES[currentStore];
+  const s=STORES[currentStore]||{emoji:'',name:''};
   const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
   const cnt={};
   list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
   const summary=[4,3,2,1,0].filter(l=>cnt[l]).map(l=>`${SHORT[l]}×${cnt[l]}`).join(' ');
   const tot=list.reduce((a,r)=>a+r.total,0);
-  return `${s.emoji}${s.short}｜飯ガチャ 10連！\n`
+  return `${s.emoji}${s.name}｜飯ガチャ 10連！\n`
        + `${summary}\n`
        + `合計 ¥${tot.toLocaleString()}\n`
        + `#飯ガチャ`;
@@ -3440,7 +3517,7 @@ function applyStore(key){
     r.setProperty('--oro',th.oro);
   }
   const setText=(id,txt)=>{ const el=document.getElementById(id); if(el) el.textContent=txt; };
-  setText('brandShort',s.short);
+  setText('brandShort',s.name);
   document.title='飯ガチャ';
   storesw.querySelectorAll('.ssbtn').forEach(b=>{
     const on=b.dataset.store===key;
@@ -3529,7 +3606,9 @@ function renderRates(){
 function renderSpec(){
   const box=document.getElementById('specBox');
   if(!box) return;
-  const s=STORES[currentStore], sp=curSpec();
+  const s=STORES[currentStore];
+  if(!s) return;                    // stores.json 読込前は描画スキップ（bootApp で再実行）
+  const sp=curSpec();
   const TRIG={2:'R レア',3:'RR ダブルレア',4:'SR スーパーレア'};
   // 通常時の重みで、突入条件レア度以上を引く確率＝RUSH突入率
   const step=budgetStep();
@@ -3544,7 +3623,7 @@ function renderSpec(){
   const avg=1/(1-continueRate(sp));
   const fmt=p=>p<1?p.toFixed(2):p.toFixed(1);
   box.innerHTML=
-    `<div class="spec-h">🎰 ${s.short} 筐体スペック <b>${sp.type}</b></div>
+    `<div class="spec-h">🎰 ${s.name} 筐体スペック <b>${sp.type}</b></div>
      <div class="spec-g">
        <div><span>突入条件</span><b>${TRIG[sp.triggerLvl]||'RR'}以上</b></div>
        <div><span>RUSH突入率</span><b>${fmt(enterPct)}%</b></div>
@@ -3568,6 +3647,7 @@ fetch('stores.json',{cache:'no-store'})
   .then(d=>{ STORES=d; bootApp(); })
   .catch(err=>{
     console.error('stores.json の読み込みに失敗:',err);
+    showToast('メニューの読み込みに失敗しました（stores.json）');
     const sc=document.getElementById('screen');
     if(sc) sc.innerHTML='<div class="placeholder"><div class="big">メニュー読込エラー</div>'
       +'<div>stores.json を読み込めませんでした。<br>http(s) で配信してお試しください（file:// 直開きは非対応）。</div></div>';
@@ -3575,9 +3655,24 @@ fetch('stores.json',{cache:'no-store'})
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
-  { v:'0.32.0', items:[
-    'ヘッダーに「🏪 店内 / 🛍 持ち帰り」切替を追加。持ち帰り時はサイゼリヤは対象8品（辛味チキン・各種ピザ・ミラノ風ドリア・ドレッシング/EVOO）、王将は「お持ち帰り」カテゴリ品のみを抽選。サイゼ深夜料金+10%は持ち帰り時は適用しません。店内モードでは王将のお持ち帰り専売品（レンチン弁当等）は出ません',
+  { v:'0.34.0', items:[
+    'ヘッダーに「🏪 店内 / 🛍 持ち帰り」切替を追加。持ち帰り時はサイゼリヤは対象8品（辛味チキン・各種ピザ・ミラノ風ドリア・ドレッシング/EVOO）、餃子の王将は「お持ち帰り」カテゴリ品のみを抽選。サイゼ深夜料金+10%は持ち帰り時は適用しません。店内モードでは王将のお持ち帰り専売品（レンチン弁当等）は出ません',
     'サイゼリヤに「エクストラ・バージン・オリーブオイル 500ml ¥1,200」を追加',
+  ] },
+  { v:'0.33.1', items:[
+    'お店の表示・共有テキストを正式名称に統一（ココイチ→CoCo壱番屋／サイゼ→サイゼリヤ／王将→餃子の王将）。スロット筐体スペックやプレースホルダの店名表示も正式名称に揃えました',
+  ] },
+  { v:'0.33.0', items:[
+    '店舗ごとの「メニュー一覧」を本機能化。ヘッダーの📋ボタン（またはモニタを3回タップ）で、現在のお店の全メニューを確認できます',
+  ] },
+  { v:'0.32.2', items:[
+    '餃子の王将のメニューから「野菜炒め」を削除（「野菜炒め ジャストサイズ」は引き続き登場します）',
+  ] },
+  { v:'0.32.1', items:[
+    'ページ読込直後に「TypeError: undefined is not an object (evaluating \'s.short\')」というエラーが出る不具合を修正（店舗データ読込前にスペック表示が走るのを防止）',
+  ] },
+  { v:'0.32.0', items:[
+    '機能がうまく動かないときに、画面上部に小さな通知（トースト）でお知らせするようにしました（メニュー読込エラーや想定外のエラーを検知）',
   ] },
   { v:'0.31.1', items:[
     'デプロイ先で「メニュー読込エラー」が出てページが反応しなくなっていた不具合を修正（GitHub Pages 配信物に stores.json を同梱）',
@@ -3783,9 +3878,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && helpModal && !helpModal.hidden) closeHelp();
 });
 
-// デバッグ専用：モニタを3回タップでその店のメニュー一覧をウィンドウ表示
-const DEBUG = /[?&#]debug\b/.test(location.search + location.hash)
-           || (()=>{ try{ return localStorage.getItem('mg.debug')==='1'; }catch(e){ return false; } })();
+// メニュー一覧：ヘッダーの📋ボタン or モニタ3タップでその店の全メニューをウィンドウ表示
 const mdbgModal=document.getElementById('menuDbgModal');
 const mdbgBody=document.getElementById('menuDbgBody');
 const mdbgClose=document.getElementById('menuDbgClose');
@@ -3812,7 +3905,8 @@ if(mdbgModal) mdbgModal.addEventListener('click',e=>{ if(e.target===mdbgModal) c
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && mdbgModal && !mdbgModal.hidden) closeDbgMenu();
 });
-if(DEBUG && monitorEl){
+// モニタ3タップでも開ける（隠しショートカット）
+if(monitorEl){
   let taps=0, tt=null;
   monitorEl.style.cursor='pointer';
   monitorEl.addEventListener('click',()=>{
@@ -3822,6 +3916,9 @@ if(DEBUG && monitorEl){
     tt=setTimeout(()=>{ taps=0; }, 800);
   });
 }
+// ヘッダーの📋メニュー一覧ボタン
+const menuListBtn=document.getElementById('menuListBtn');
+if(menuListBtn) menuListBtn.addEventListener('click',openDbgMenu);
 
 // 設定モーダル：筐体の⚙ボタンで開閉（変更履歴モーダルと同じ作法を流用）
 const setBtn=document.getElementById('setBtn');
