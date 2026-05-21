@@ -32,7 +32,7 @@ jobs:
       - name: Stage site
         run: |
           mkdir -p _site
-          cp index.html og.png _site/
+          cp index.html og.png stores.json _site/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
