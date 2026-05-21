@@ -1027,7 +1027,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.32.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.32.1</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -2003,7 +2003,7 @@ function renderRush(list){
 }
 
 function rushShareText(list){
-  const s=STORES[currentStore];
+  const s=STORES[currentStore]||{emoji:'',short:''};
   const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
   const cnt={};
   list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
@@ -2083,7 +2083,7 @@ function shareUrl(){
 }
 
 function singleShareText(items,total,left,budget){
-  const s=STORES[currentStore];
+  const s=STORES[currentStore]||{emoji:'',short:''};
   const rare=budgetRarity(budget);
   const names=sortItemsByCategory(items).map(it=>`${it[3]}${it[0]}${it[7]==='limited'?'(期間限定)':''}`).join('\n');
   return `${s.emoji}${s.short}｜飯ガチャ｜予算 ¥${budget.toLocaleString()}（${rare.t}）\n`
@@ -2093,7 +2093,7 @@ function singleShareText(items,total,left,budget){
 }
 
 function tenShareText(list){
-  const s=STORES[currentStore];
+  const s=STORES[currentStore]||{emoji:'',short:''};
   const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
   const cnt={};
   list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
@@ -3524,7 +3524,9 @@ function renderRates(){
 function renderSpec(){
   const box=document.getElementById('specBox');
   if(!box) return;
-  const s=STORES[currentStore], sp=curSpec();
+  const s=STORES[currentStore];
+  if(!s) return;                    // stores.json 読込前は描画スキップ（bootApp で再実行）
+  const sp=curSpec();
   const TRIG={2:'R レア',3:'RR ダブルレア',4:'SR スーパーレア'};
   // 通常時の重みで、突入条件レア度以上を引く確率＝RUSH突入率
   const step=budgetStep();
@@ -3571,6 +3573,9 @@ fetch('stores.json',{cache:'no-store'})
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.32.1', items:[
+    'ページ読込直後に「TypeError: undefined is not an object (evaluating \'s.short\')」というエラーが出る不具合を修正（店舗データ読込前にスペック表示が走るのを防止）',
+  ] },
   { v:'0.32.0', items:[
     '機能がうまく動かないときに、画面上部に小さな通知（トースト）でお知らせするようにしました（メニュー読込エラーや想定外のエラーを検知）',
   ] },
