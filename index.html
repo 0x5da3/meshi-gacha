@@ -997,6 +997,29 @@
   .sharebar button.primary{background:var(--rosso);color:#fff}
   .sharebar button:hover{opacity:.92}
   .sharebar button:active{transform:scale(.97)}
+
+  /* ---- エラートースト（機能不調の通知）---- */
+  .toast-stack{
+    position:fixed;left:50%;top:14px;transform:translateX(-50%);
+    z-index:200;pointer-events:none;
+    display:flex;flex-direction:column;gap:8px;align-items:center;
+    max-width:92vw;
+  }
+  .toast{
+    pointer-events:auto;
+    font-family:"Reggae One",cursive;
+    font-size:12.5px;letter-spacing:.02em;line-height:1.35;
+    padding:9px 14px;border-radius:99px;
+    color:#fff;background:#c8102e;
+    box-shadow:0 6px 18px rgba(0,0,0,.32),0 2px 0 rgba(0,0,0,.18);
+    opacity:0;transform:translateY(-8px) scale(.96);
+    transition:opacity .22s ease,transform .22s cubic-bezier(.2,1.5,.4,1);
+    max-width:92vw;word-break:break-word;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateY(0) scale(1)}
+  .toast-error{background:linear-gradient(180deg,#ff3a55,#b3001b)}
+  .toast-warn {background:linear-gradient(180deg,#ffb13a,#c97a00);color:#3a1f00}
+  .toast-info {background:linear-gradient(180deg,#5b6b80,#2f3a4a)}
 </style>
 </head>
 <body>
@@ -1004,7 +1027,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.31.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.32.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -1232,6 +1255,46 @@
   style="position:fixed;left:-9999px;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none"></video>
 
 <script>
+// ===== エラートースト（機能不調の通知）=====
+// 画面右上中央に短時間表示し、同一メッセージは3秒間まとめる。
+const _toastSeen=new Map();
+function showToast(msg, opts){
+  opts = opts || {};
+  const type = opts.type || 'error';            // 'error' | 'warn' | 'info'
+  const ms   = (typeof opts.ms==='number') ? opts.ms : 4500;
+  const text = String(msg==null ? '不明なエラー' : msg).slice(0,200);
+  const key  = type+'|'+text;
+  const now  = Date.now();
+  const last = _toastSeen.get(key) || 0;
+  if(now - last < 3000) return;                 // 連続スパムを抑制
+  _toastSeen.set(key, now);
+  let stack = document.getElementById('toastStack');
+  if(!stack){
+    stack = document.createElement('div');
+    stack.id = 'toastStack';
+    stack.className = 'toast-stack';
+    stack.setAttribute('aria-live','polite');
+    stack.setAttribute('aria-atomic','false');
+    (document.body || document.documentElement).appendChild(stack);
+  }
+  const t = document.createElement('div');
+  t.className = 'toast toast-'+type;
+  t.setAttribute('role', type==='error'?'alert':'status');
+  t.textContent = text;
+  stack.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),320); }, ms);
+}
+window.addEventListener('error', e=>{
+  const m = (e && (e.message || (e.error && e.error.message))) || '不明なエラー';
+  showToast('エラー: '+m);
+});
+window.addEventListener('unhandledrejection', e=>{
+  const r = e && e.reason;
+  const m = (r && (r.message || r.toString && r.toString())) || String(r||'非同期エラー');
+  showToast('エラー: '+m);
+});
+
 // 店舗データは stores.json（fetch 読込）。STORES はブート時に充填される。
 let STORES = {};
 
@@ -3500,6 +3563,7 @@ fetch('stores.json',{cache:'no-store'})
   .then(d=>{ STORES=d; bootApp(); })
   .catch(err=>{
     console.error('stores.json の読み込みに失敗:',err);
+    showToast('メニューの読み込みに失敗しました（stores.json）');
     const sc=document.getElementById('screen');
     if(sc) sc.innerHTML='<div class="placeholder"><div class="big">メニュー読込エラー</div>'
       +'<div>stores.json を読み込めませんでした。<br>http(s) で配信してお試しください（file:// 直開きは非対応）。</div></div>';
@@ -3507,6 +3571,9 @@ fetch('stores.json',{cache:'no-store'})
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.32.0', items:[
+    '機能がうまく動かないときに、画面上部に小さな通知（トースト）でお知らせするようにしました（メニュー読込エラーや想定外のエラーを検知）',
+  ] },
   { v:'0.31.0', items:[
     'サイゼリヤの「ビーフステーキ 肩ロース」と「ラムのランプステーキ」（店舗によりどちらか一方を販売）が出たとき、結果の「⇄ 切替」をタップして実際に頼める方へ入れ替えられるようにしました（同価格のため合計・おつりは変わりません）',
   ] },
