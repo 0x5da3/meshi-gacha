@@ -1040,10 +1040,10 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.33.0</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.33.1</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
-      <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
+      <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 CoCo壱番屋</button>
       <button class="ssbtn" data-store="saizeriya" role="tab" aria-selected="false">🍝 サイゼリヤ</button>
       <button class="ssbtn" data-store="ohsho" role="tab" aria-selected="false">🥟 餃子の王将</button>
     </div>
@@ -1105,7 +1105,7 @@
   <div class="screen" id="screen">
     <div class="placeholder">
       <div class="big">レバーを回そう！</div>
-      <div>上のツマミをまわすと予算（¥1,000〜¥5,000）と<br><span id="brandShort">サイゼ</span>のメニューが同時にランダム決定！<br>高額予算ほど超レアです 💎</div>
+      <div>上のツマミをまわすと予算（¥1,000〜¥5,000）と<br><span id="brandShort">CoCo壱番屋</span>のメニューが同時にランダム決定！<br>高額予算ほど超レアです 💎</div>
     </div>
   </div>
 
@@ -2017,13 +2017,13 @@ function renderRush(list){
 }
 
 function rushShareText(list){
-  const s=STORES[currentStore]||{emoji:'',short:''};
+  const s=STORES[currentStore]||{emoji:'',name:''};
   const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
   const cnt={};
   list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
   const summary=[4,3,2,1,0].filter(l=>cnt[l]).map(l=>`${SHORT[l]}×${cnt[l]}`).join(' ');
   const tot=list.reduce((a,r)=>a+r.total,0);
-  return `${s.emoji}${s.short}｜飯ガチャ 🔥RUSH ${list.length}連！\n`
+  return `${s.emoji}${s.name}｜飯ガチャ 🔥RUSH ${list.length}連！\n`
        + `${summary}\n`
        + `合計 ¥${tot.toLocaleString()}\n`
        + `#飯ガチャ`;
@@ -2097,23 +2097,23 @@ function shareUrl(){
 }
 
 function singleShareText(items,total,left,budget){
-  const s=STORES[currentStore]||{emoji:'',short:''};
+  const s=STORES[currentStore]||{emoji:'',name:''};
   const rare=budgetRarity(budget);
   const names=sortItemsByCategory(items).map(it=>`${it[3]}${it[0]}${it[7]==='limited'?'(期間限定)':''}`).join('\n');
-  return `${s.emoji}${s.short}｜飯ガチャ｜予算 ¥${budget.toLocaleString()}（${rare.t}）\n`
+  return `${s.emoji}${s.name}｜飯ガチャ｜予算 ¥${budget.toLocaleString()}（${rare.t}）\n`
        + `${names}\n`
        + `合計 ¥${total.toLocaleString()}（おつり ¥${left.toLocaleString()}）\n`
        + `#飯ガチャ`;
 }
 
 function tenShareText(list){
-  const s=STORES[currentStore]||{emoji:'',short:''};
+  const s=STORES[currentStore]||{emoji:'',name:''};
   const SHORT={4:'SR',3:'RR',2:'R',1:'U',0:'C'};
   const cnt={};
   list.forEach(r=>{const l=budgetRarity(r.budget).lvl;cnt[l]=(cnt[l]||0)+1;});
   const summary=[4,3,2,1,0].filter(l=>cnt[l]).map(l=>`${SHORT[l]}×${cnt[l]}`).join(' ');
   const tot=list.reduce((a,r)=>a+r.total,0);
-  return `${s.emoji}${s.short}｜飯ガチャ 10連！\n`
+  return `${s.emoji}${s.name}｜飯ガチャ 10連！\n`
        + `${summary}\n`
        + `合計 ¥${tot.toLocaleString()}\n`
        + `#飯ガチャ`;
@@ -3449,7 +3449,7 @@ function applyStore(key){
     r.setProperty('--oro',th.oro);
   }
   const setText=(id,txt)=>{ const el=document.getElementById(id); if(el) el.textContent=txt; };
-  setText('brandShort',s.short);
+  setText('brandShort',s.name);
   document.title='飯ガチャ';
   storesw.querySelectorAll('.ssbtn').forEach(b=>{
     const on=b.dataset.store===key;
@@ -3555,7 +3555,7 @@ function renderSpec(){
   const avg=1/(1-continueRate(sp));
   const fmt=p=>p<1?p.toFixed(2):p.toFixed(1);
   box.innerHTML=
-    `<div class="spec-h">🎰 ${s.short} 筐体スペック <b>${sp.type}</b></div>
+    `<div class="spec-h">🎰 ${s.name} 筐体スペック <b>${sp.type}</b></div>
      <div class="spec-g">
        <div><span>突入条件</span><b>${TRIG[sp.triggerLvl]||'RR'}以上</b></div>
        <div><span>RUSH突入率</span><b>${fmt(enterPct)}%</b></div>
@@ -3587,6 +3587,9 @@ fetch('stores.json',{cache:'no-store'})
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.33.1', items:[
+    'お店の表示・共有テキストを正式名称に統一（ココイチ→CoCo壱番屋／サイゼ→サイゼリヤ／王将→餃子の王将）。スロット筐体スペックやプレースホルダの店名表示も正式名称に揃えました',
+  ] },
   { v:'0.33.0', items:[
     '店舗ごとの「メニュー一覧」を本機能化。ヘッダーの📋ボタン（またはモニタを3回タップ）で、現在のお店の全メニューを確認できます',
   ] },
