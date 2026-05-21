@@ -192,6 +192,23 @@
   .msbtn:not(.on):hover{background:rgba(200,16,46,.1)}
   .msbtn:active{transform:scale(.96)}
 
+  /* ---- dine switcher (店内 / 持ち帰り) ---- */
+  .dinesw{
+    position:relative;
+    display:inline-flex;gap:0;background:rgba(255,255,255,.6);
+    border:2px solid var(--rosso);border-radius:99px;padding:2px;margin:5px 0 0 5px;
+    box-shadow:2px 2px 0 rgba(0,0,0,.12);vertical-align:middle;
+  }
+  .dsbtn{
+    border:0;background:none;cursor:pointer;
+    font-family:"Reggae One",cursive;font-size:11px;
+    padding:4px 9px;border-radius:99px;color:var(--rosso);
+    transition:background .15s,color .15s;letter-spacing:.02em;
+  }
+  .dsbtn.on{background:var(--rosso);color:#fff}
+  .dsbtn:not(.on):hover{background:rgba(200,16,46,.1)}
+  .dsbtn:active{transform:scale(.96)}
+
   /* ---- machine ---- */
   .machine{
     background:var(--rosso);
@@ -1004,7 +1021,7 @@
   <header>
     <div class="brandrow">
       <h1>飯<span>ガチャ</span></h1>
-      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.31.1</button>
+      <button class="ver" id="verBadge" aria-label="アップデート履歴を表示" type="button">v0.32.0</button>
     </div>
     <div class="storesw" id="storesw" role="tablist" aria-label="お店を切り替え">
       <button class="ssbtn on" data-store="cocoichi" role="tab" aria-selected="true">🍛 ココイチ</button>
@@ -1014,6 +1031,10 @@
     <div class="modesw" id="modesw" role="tablist" aria-label="モードを切り替え">
       <button class="msbtn on" data-mode="gacha" role="tab" aria-selected="true">🎰 ガチャ</button>
       <button class="msbtn" data-mode="slot" role="tab" aria-selected="false">🎲 スロット</button>
+    </div>
+    <div class="dinesw" id="dinesw" role="tablist" aria-label="店内・持ち帰り切替">
+      <button class="dsbtn on" data-dine="inshop" role="tab" aria-selected="true">🏪 店内</button>
+      <button class="dsbtn" data-dine="takeout" role="tab" aria-selected="false">🛍 持ち帰り</button>
     </div>
   </header>
 
@@ -1262,6 +1283,32 @@ function spendNote(left){
 let history=[];
 let energy=0;            // 0〜10。10でフル→次回10連
 let alcoholOn=true;      // アルコール込み/抜き切り替え
+let dineMode='inshop';   // 'inshop' | 'takeout' （店内 / 持ち帰り）
+
+// サイゼリヤ：持ち帰り対応の8品（名称完全一致で抽出）
+const SAIZE_TAKEOUT=new Set([
+  '辛味チキン',
+  'バッファローモッツァレラのマルゲリータピザ',
+  'ソーセージピザ',
+  'たっぷりコーンのピザ',
+  '野菜ときのこのピザ',
+  'ミラノ風ドリア',
+  'サイゼリヤドレッシング 500ml',
+  'エクストラ・バージン・オリーブオイル 500ml',
+]);
+// 店内/持ち帰りモードでの抽選プール条件（店舗別）。
+//   takeout: サイゼは8品のみ／王将は「お持ち帰り」カテゴリのみ／ココイチは全品
+//   inshop:  王将の「お持ち帰り」カテゴリは除外／他は全品
+function dinePass(it){
+  if(dineMode==='takeout'){
+    if(currentStore==='saizeriya') return SAIZE_TAKEOUT.has(it[0]);
+    if(currentStore==='ohsho')     return it[2]==='お持ち帰り';
+    return true; // cocoichi: 後日仕様追加予定。当面は全品
+  }
+  // inshop
+  if(currentStore==='ohsho') return it[2]!=='お持ち帰り';
+  return true;
+}
 let confirmThreshold=4; // このレア度(lvl)以上で開封必須（未開封ロック）。nullでオフ。初期値はSR
 // サウンド設定（localStorage に保存）
 let soundMuted=false, soundVolume=0.8, bgmMuted=true;  // 初期設定はBGMオフ
@@ -1417,7 +1464,10 @@ function computeResult(){
     if(!inSaizeMorning()) pool=pool.filter(m=>m[2]!=='モーニング');
     if(!inSaizeLunch())   pool=pool.filter(m=>m[2]!=='ランチ');
   }
-  const nrate=nightRate();
+  // 店内/持ち帰り フィルタ（店舗別ルール）
+  pool=pool.filter(dinePass);
+  // 持ち帰り時はサイゼ深夜料金を適用しない（実態に合わせる）。
+  const nrate = (dineMode==='takeout') ? 1 : nightRate();
   // 深夜料金がある場合、会計(=小計×rate)が予算内に収まるよう小計の上限を圧縮
   let chosen=[], total=0, remain = nrate>1 ? Math.floor(budget/nrate) : budget;
 
@@ -3285,6 +3335,24 @@ modesw.addEventListener('click',e=>{
   applyMode(b.dataset.mode);
 });
 
+// 店内 / 持ち帰り 切替
+const dinesw=document.getElementById('dinesw');
+function applyDine(m){
+  if(m!=='inshop' && m!=='takeout') m='inshop';
+  dineMode=m;
+  dinesw.querySelectorAll('.dsbtn').forEach(b=>{
+    const on=b.dataset.dine===m;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-selected',on?'true':'false');
+  });
+}
+dinesw.addEventListener('click',e=>{
+  const b=e.target.closest('.dsbtn'); if(!b||b.classList.contains('on')) return;
+  if(spinning){ showSwHint(dinesw,'回し中は切替できません'); return; }
+  if(awaitingOpen){ showSwHint(dinesw,'カプセルを開けてね'); flashLock(); return; }
+  applyDine(b.dataset.dine);
+});
+
 // 切替不可時の控えめなインライン通知（storesw / modesw 共用）
 function showSwHint(host,msg){
   if(!host) return;
@@ -3507,6 +3575,10 @@ fetch('stores.json',{cache:'no-store'})
 
 /* ===== 変更履歴ポップアップ ===== */
 const CHANGELOG=[
+  { v:'0.32.0', items:[
+    'ヘッダーに「🏪 店内 / 🛍 持ち帰り」切替を追加。持ち帰り時はサイゼリヤは対象8品（辛味チキン・各種ピザ・ミラノ風ドリア・ドレッシング/EVOO）、王将は「お持ち帰り」カテゴリ品のみを抽選。サイゼ深夜料金+10%は持ち帰り時は適用しません。店内モードでは王将のお持ち帰り専売品（レンチン弁当等）は出ません',
+    'サイゼリヤに「エクストラ・バージン・オリーブオイル 500ml ¥1,200」を追加',
+  ] },
   { v:'0.31.1', items:[
     'デプロイ先で「メニュー読込エラー」が出てページが反応しなくなっていた不具合を修正（GitHub Pages 配信物に stores.json を同梱）',
   ] },
